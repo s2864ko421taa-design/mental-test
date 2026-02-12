@@ -8,92 +8,78 @@ const AXES = [
   { key: "RX", left: "R", right: "X" },
 ];
 
-function clamp(n, a, b) {
-  return Math.max(a, Math.min(b, n));
-}
-
-// 1..5 を -2..+2 に変換（1=強く当てはまる→そのside寄り）
-function likertToSigned(v) {
+// 1..5 → +2..-2（1が強く当てはまる=その side 方向に寄る）
+function likertSigned(v) {
   const x = Number(v);
   if (![1, 2, 3, 4, 5].includes(x)) return 0;
-  return 3 - x; // 1→+2, 2→+1, 3→0, 4→-1, 5→-2
+  return 3 - x; // 1:+2, 2:+1, 3:0, 4:-1, 5:-2
 }
 
-function axisPair(axisKey) {
+function otherSide(axisKey, side) {
   const a = AXES.find((x) => x.key === axisKey);
   if (!a) return null;
-  return { left: a.left, right: a.right };
+  return side === a.left ? a.right : a.left;
 }
 
+function toPercent(a, b) {
+  const total = a + b;
+  if (!Number.isFinite(total) || total <= 0) return [50, 50];
+  const pA = Math.round((a / total) * 100);
+  return [pA, 100 - pA];
+}
+
+// answers: [1..5 or null], QUESTIONS: [{axis:"UO", side:"U", text:"..."}, ...]
 export function calculateResult(answers, QUESTIONS) {
-  const out = {};
-
-  for (const a of AXES) {
-    out[a.key] = {
-      main: a.left,     // 仮（あとで決める）
-      alt: a.right,
-      pMain: 50,
-      pAlt: 50,
-      pL: 50,
-      pR: 50,
-      left: a.left,
-      right: a.right,
-    };
-  }
-
-  // 各軸：left/right のポイントを積む（ポイント=abs( signed )）
   const pts = {};
-  for (const a of AXES) {
-    pts[a.key] = { L: 0, R: 0 };
-  }
+  for (const a of AXES) pts[a.key] = { L: 0, R: 0 };
 
   for (let i = 0; i < QUESTIONS.length; i++) {
     const q = QUESTIONS[i];
     const v = answers?.[i];
     if (v == null) continue;
 
-    const signed = likertToSigned(v);
+    const signed = likertSigned(v);
     if (signed === 0) continue;
 
-    const pair = axisPair(q.axis);
-    if (!pair) continue;
-
-    const magnitude = Math.abs(signed);
-    const side = q.side; // "U" or "O" etc
-
-    // signed>0 は q.side 側に寄る、signed<0 は反対側に寄る
-    const toward = signed > 0 ? side : (side === pair.left ? pair.right : pair.left);
-
     const axisKey = q.axis;
-    if (toward === pair.left) pts[axisKey].L += magnitude;
-    if (toward === pair.right) pts[axisKey].R += magnitude;
+    const side = q.side; // 例: "U" or "O"
+    if (!axisKey || !side) continue;
+
+    const toward = signed > 0 ? side : otherSide(axisKey, side);
+    if (!toward) continue;
+
+    const mag = Math.abs(signed);
+
+    const axis = AXES.find((x) => x.key === axisKey);
+    if (!axis) continue;
+
+    if (toward === axis.left) pts[axisKey].L += mag;
+    if (toward === axis.right) pts[axisKey].R += mag;
   }
 
+  const out = {};
   for (const a of AXES) {
-    const p = pts[a.key];
-    const total = p.L + p.R;
+    const L = pts[a.key].L;
+    const R = pts[a.key].R;
 
-    let pL = 50, pR = 50;
-    if (total > 0) {
-      pL = Math.round((p.L / total) * 100);
-      pR = 100 - pL;
-    }
+    const [pL, pR] = toPercent(L, R);
 
-    // main は多い方
-    const main = p.L >= p.R ? a.left : a.right;
+    const main = pL >= pR ? a.left : a.right;
     const alt = main === a.left ? a.right : a.left;
+
     const pMain = main === a.left ? pL : pR;
     const pAlt = 100 - pMain;
 
     out[a.key] = {
-      main,
-      alt,
-      pMain,
-      pAlt,
-      pL,
-      pR,
       left: a.left,
       right: a.right,
+      main,
+      alt,
+      // ✅ index.js から参照しても絶対数値になる
+      pL,
+      pR,
+      pMain,
+      pAlt,
     };
   }
 
