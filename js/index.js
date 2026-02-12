@@ -2,11 +2,7 @@
 import { QUESTIONS, CHOICES } from "./questions.js";
 import { saveAnswer, loadAnswers, clearAnswers } from "./storage.js";
 
-const $ = (sel) => document.querySelector(sel);
-
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
-}
+const $ = (id) => document.getElementById(id);
 
 function ensureLen60(arr) {
   const out = Array.isArray(arr) ? arr.slice(0, 60) : [];
@@ -14,115 +10,107 @@ function ensureLen60(arr) {
   return out;
 }
 
-function setText(id, text) {
-  const el = document.getElementById(id);
+function clamp(n, min, max) {
+  return Math.max(min, Math.min(max, n));
+}
+
+function setStatus(text) {
+  const el = $("statusText");
   if (el) el.textContent = text;
 }
 
-function renderQuestion(state) {
-  const idx = state.index;
+function render(state) {
+  const i = state.index;
 
-  setText("qNo", `Q${idx + 1}`);
-  setText("qText", QUESTIONS[idx] || "（質問が見つかりません）");
+  // progress
+  if ($("progressText")) $("progressText").textContent = `進捗 ${i} / 60`;
+  if ($("progressBar")) $("progressBar").style.width = `${Math.round((i / 60) * 100)}%`;
 
-  setText("progressText", `進捗 ${idx} / 60`);
-  const bar = $("#progressBar");
-  if (bar) bar.style.width = `${Math.round((idx / 60) * 100)}%`;
+  // question
+  if ($("qNumber")) $("qNumber").textContent = `Q${i + 1}`;
+  if ($("qText")) $("qText").textContent = QUESTIONS[i] || "（質問がありません）";
 
-  const area = $("#choices");
-  if (!area) return;
+  // choices
+  const area = $("choices");
   area.innerHTML = "";
 
-  const current = state.answers[idx];
+  const current = state.answers[i];
 
   CHOICES.forEach((c) => {
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "choice";
-    btn.textContent = `${c.value}. ${c.label}`;
-    if (current === c.value) btn.classList.add("is-selected");
+    const b = document.createElement("button");
+    b.type = "button";
+    b.className = "choice";
+    b.textContent = `${c.value}. ${c.label}`;
+    if (current === c.value) b.classList.add("is-selected");
 
-    btn.addEventListener("click", () => {
-      state.answers[idx] = c.value;
-      saveAnswer(idx, c.value);
+    b.addEventListener("click", () => {
+      state.answers[i] = c.value;
+      saveAnswer(i, c.value);
 
-      [...area.querySelectorAll(".choice")].forEach((x) =>
-        x.classList.remove("is-selected")
-      );
-      btn.classList.add("is-selected");
+      [...area.querySelectorAll(".choice")].forEach((x) => x.classList.remove("is-selected"));
+      b.classList.add("is-selected");
 
-      if (idx < 59) {
+      // auto next
+      if (i < 59) {
         state.index++;
-        renderQuestion(state);
+        render(state);
       } else {
         location.href = "./pages/type.html";
       }
     });
 
-    area.appendChild(btn);
+    area.appendChild(b);
   });
 
-  const prevBtn = $("#prevBtn");
-  const nextBtn = $("#nextBtn");
-  if (prevBtn) prevBtn.disabled = idx <= 0;
-  if (nextBtn) nextBtn.disabled = state.answers[idx] == null;
-}
-
-function wireNav(state) {
-  const prevBtn = $("#prevBtn");
-  const nextBtn = $("#nextBtn");
-  const restartBtn = $("#restartBtn");
-
-  if (prevBtn) {
-    prevBtn.addEventListener("click", () => {
-      state.index = clamp(state.index - 1, 0, 59);
-      renderQuestion(state);
-    });
-  }
-
-  if (nextBtn) {
-    nextBtn.addEventListener("click", () => {
-      if (state.answers[state.index] == null) return;
-      if (state.index < 59) {
-        state.index++;
-        renderQuestion(state);
-      } else {
-        location.href = "./pages/type.html";
-      }
-    });
-  }
-
-  if (restartBtn) {
-    restartBtn.addEventListener("click", () => {
-      if (!confirm("最初からやり直しますか？")) return;
-      clearAnswers();
-      state.answers = ensureLen60([]);
-      state.index = 0;
-      renderQuestion(state);
-    });
-  }
+  // buttons
+  const prev = $("btnPrev");
+  const next = $("btnNext");
+  if (prev) prev.disabled = i <= 0;
+  if (next) next.disabled = state.answers[i] == null;
 }
 
 function boot() {
-  // DOMが無いなら動かさない（別ページ対策）
-  if (!$("#choices") || !document.getElementById("qText")) return;
-
   if (!Array.isArray(QUESTIONS) || QUESTIONS.length !== 60) {
-    setText("qText", "questions.js が 60問になっていません");
+    setStatus("questions.js が 60問になってない");
     return;
   }
+
+  setStatus("準備OK");
 
   const state = {
     answers: ensureLen60(loadAnswers()),
     index: 0,
   };
 
-  // 途中再開（最初の未回答へ）
+  // resume to first unanswered
   const firstNull = state.answers.findIndex((v) => v == null);
-  if (firstNull > 0) state.index = clamp(firstNull, 0, 59);
+  if (firstNull >= 0) state.index = clamp(firstNull, 0, 59);
 
-  wireNav(state);
-  renderQuestion(state);
+  // nav wiring
+  $("btnPrev")?.addEventListener("click", () => {
+    state.index = clamp(state.index - 1, 0, 59);
+    render(state);
+  });
+
+  $("btnNext")?.addEventListener("click", () => {
+    if (state.answers[state.index] == null) return;
+    if (state.index < 59) {
+      state.index++;
+      render(state);
+    } else {
+      location.href = "./pages/type.html";
+    }
+  });
+
+  $("btnRestart")?.addEventListener("click", () => {
+    if (!confirm("最初からやり直す？")) return;
+    clearAnswers();
+    state.answers = ensureLen60([]);
+    state.index = 0;
+    render(state);
+  });
+
+  render(state);
 }
 
 document.addEventListener("DOMContentLoaded", () => {
@@ -130,6 +118,6 @@ document.addEventListener("DOMContentLoaded", () => {
     boot();
   } catch (e) {
     console.error(e);
-    alert("index.js でエラー: " + (e?.message || e));
+    setStatus("JSエラー: " + (e?.message || e));
   }
 });
