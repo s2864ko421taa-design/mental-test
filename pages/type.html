@@ -1,95 +1,71 @@
 <script type="module">
-  import { QUESTIONS } from "../js/questions.js";
-  import { loadState } from "../js/storage.js";
-  import { calculateResult, buildCode } from "../js/scoring.js";
-  import { getTypeInfo } from "../js/characters.js";
+import { getTypeInfo } from "../js/characters.js";
+import { QUESTIONS } from "../js/questions.js";
+import { loadState } from "../js/storage.js";
+import { calculateResult, buildCode } from "../js/scoring.js";
 
-  const $ = (id) => document.getElementById(id);
+const $ = (id) => document.getElementById(id);
 
-  function gauge(left, pLeft, right, pRight) {
-    // pLeft/pRight は数値(0-100)を想定
-    const L = Number.isFinite(pLeft) ? Math.round(pLeft) : 0;
-    const R = Number.isFinite(pRight) ? Math.round(pRight) : 0;
-
-    return `
-      <div style="margin:16px 0;">
-        <div style="font-size:13px; margin-bottom:6px; display:flex; justify-content:space-between;">
-          <div><b>${left}</b> (${L}%)</div>
-          <div><b>${right}</b> (${R}%)</div>
-        </div>
-        <div style="height:10px; background:#1c2640; border-radius:999px; overflow:hidden;">
-          <div style="
-            width:${L}%;
-            height:100%;
-            background:linear-gradient(90deg,#5a8cff,#8c6bff);
-          "></div>
-        </div>
-      </div>
-    `;
+try {
+  // このページが想定HTMLかチェック（ここがnullなら“別のtype.html”を見てる）
+  const elTypeCode = $("typeCode");
+  if (!elTypeCode) {
+    throw new Error('type.html側に id="typeCode" が存在しない（違うHTMLを読んでる可能性大）');
   }
 
-  try {
-    // 1) 診断ページが保存した state を読む（index.js と同じ）
-    const state = loadState(); // { answers: [...], current: number } 想定
-    if (!state || !Array.isArray(state.answers)) {
-      throw new Error("保存された回答が見つかりません（localStorage）。診断を一度実行してから開いてください。");
+  // 1) URLの ?t=XXXX があればそれ優先
+  const params = new URLSearchParams(location.search);
+  let code = params.get("t");
+
+  // 2) なければ storage から回答を拾って計算
+  if (!code) {
+    const state = loadState?.();
+    const answers = state?.answers;
+
+    if (!Array.isArray(answers) || answers.length !== QUESTIONS.length) {
+      throw new Error("回答データが見つからない/不足（?t= が無い、または storage の回答が壊れてる）");
     }
 
-    // 2) スコア計算（index.js と同じ呼び方に統一）
-    const axis = calculateResult(state.answers, QUESTIONS);
-    const code = buildCode(axis);
-
-    // 3) タイプ情報
-    const info = getTypeInfo(code);
-
-    if (!info || !info.code) {
-      $("notFound").style.display = "";
-      throw new Error("Unknown type: " + code);
-    }
-
-    // 4) 基本情報
-    $("typeCode").textContent = info.code || code;
-    $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
-    $("pageSub").textContent = info.axesText || "";
-    $("typeLabel").textContent = info.shortLabel || "";
-    $("desc").textContent = info.description || "";
-
-    // バッジ
-    const badge = $("groupBadge");
-    badge.textContent = info.group2?.name || info.group || "GROUP";
-    badge.style.borderColor = info.color || "rgba(255,255,255,.25)";
-    badge.style.color = "var(--text)";
-    badge.style.background = "rgba(255,255,255,.06)";
-
-    // 5) パーセントゲージ（axis 側のプロパティに合わせる）
-    // index.js で使ってる axis.UO.pL / axis.UO.pR 形式に合わせる
-    const gaugeWrap = document.createElement("div");
-    gaugeWrap.innerHTML =
-      gauge("U", axis.UO?.pL, "O", axis.UO?.pR) +
-      gauge("M", axis.MC?.pL, "C", axis.MC?.pR) +
-      gauge("H", axis.HL?.pL, "L", axis.HL?.pR) +
-      gauge("D", axis.DS?.pL, "S", axis.DS?.pR) +
-      gauge("R", axis.RX?.pL, "X", axis.RX?.pR);
-
-    document.querySelector(".resultHeader")?.after(gaugeWrap);
-
-    // 6) リスト
-    function fillList(id, arr) {
-      const ul = $(id);
-      ul.innerHTML = "";
-      (arr || []).forEach((text) => {
-        const li = document.createElement("li");
-        li.textContent = text;
-        ul.appendChild(li);
-      });
-    }
-
-    fillList("strengths", info.strengths);
-    fillList("cautions", info.cautions);
-    fillList("tips", info.tips);
-
-  } catch (e) {
-    console.error(e);
-    alert("タイプ詳細の読み込みに失敗: " + (e?.message || String(e)));
+    const axis = calculateResult(answers, QUESTIONS);
+    code = buildCode(axis);
   }
+
+  // 3) コードからキャラ情報取得
+  const info = getTypeInfo(code);
+
+  // 見つからない時の表示
+  if (!info) {
+    $("notFound").style.display = "";
+    $("typeCode").textContent = code;
+    throw new Error("Unknown type: " + code);
+  }
+
+  // 4) 基本情報反映
+  $("typeCode").textContent = info.code || code;
+  $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
+  $("pageSub").textContent = info.axesText || "";
+  $("typeLabel").textContent = info.shortLabel || info.label || "";
+  $("groupBadge").textContent = info.group || "GROUP";
+  $("desc").textContent = info.description || "";
+
+  // 5) リスト反映
+  const fillList = (id, arr) => {
+    const ul = $(id);
+    if (!ul) return;
+    ul.innerHTML = "";
+    (arr || []).forEach((t) => {
+      const li = document.createElement("li");
+      li.textContent = t;
+      ul.appendChild(li);
+    });
+  };
+
+  fillList("strengths", info.strengths);
+  fillList("cautions", info.cautions);
+  fillList("tips", info.tips);
+
+} catch (e) {
+  console.error(e);
+  alert("タイプ詳細の読み込みに失敗: " + (e?.message || String(e)));
+}
 </script>
