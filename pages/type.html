@@ -1,71 +1,139 @@
-<script type="module">
-import { getTypeInfo } from "../js/characters.js";
-import { QUESTIONS } from "../js/questions.js";
-import { loadState } from "../js/storage.js";
-import { calculateResult, buildCode } from "../js/scoring.js";
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>タイプ詳細</title>
 
-const $ = (id) => document.getElementById(id);
+  <link rel="stylesheet" href="../css/reset.css">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/index.css">
+</head>
 
-try {
-  // このページが想定HTMLかチェック（ここがnullなら“別のtype.html”を見てる）
-  const elTypeCode = $("typeCode");
-  if (!elTypeCode) {
-    throw new Error('type.html側に id="typeCode" が存在しない（違うHTMLを読んでる可能性大）');
-  }
+<body>
+  <header class="topbar">
+    <div class="topbar__left">
+      <div class="title" id="pageTitle">タイプ詳細</div>
+      <div class="subtitle" id="pageSub"></div>
+    </div>
 
-  // 1) URLの ?t=XXXX があればそれ優先
-  const params = new URLSearchParams(location.search);
-  let code = params.get("t");
+    <div class="topbar__right topbar__right--safe">
+      <a class="btn btn--ghost" href="./characters.html">一覧へ</a>
+      <a class="btn btn--ghost" href="../index.html">診断へ</a>
+    </div>
+  </header>
 
-  // 2) なければ storage から回答を拾って計算
-  if (!code) {
-    const state = loadState?.();
-    const answers = state?.answers;
+  <main class="wrap">
+    <section class="card">
+      <div class="resultHeader">
+        <div>
+          <div class="resultTitle">あなたのタイプ</div>
+          <div class="resultType" id="typeCode">----</div>
+          <div class="muted" id="typeLabel"></div>
+        </div>
 
-    if (!Array.isArray(answers) || answers.length !== QUESTIONS.length) {
-      throw new Error("回答データが見つからない/不足（?t= が無い、または storage の回答が壊れてる）");
+        <div class="resultBadgeWrap">
+          <div class="badge" id="groupBadge">GROUP</div>
+        </div>
+      </div>
+
+      <p class="resultDesc" id="desc"></p>
+    </section>
+
+    <section class="card">
+      <div class="title">強み</div>
+      <div class="muted">上位ほど “使うと勝てる” 性質。</div>
+      <ul class="list" id="strengths"></ul>
+    </section>
+
+    <section class="card">
+      <div class="title">弱点・事故ポイント</div>
+      <ul class="list" id="cautions"></ul>
+    </section>
+
+    <section class="card">
+      <div class="title">おすすめ行動</div>
+      <ul class="list" id="tips"></ul>
+    </section>
+
+    <section class="card" id="notFound" style="display:none;">
+      <div class="title">タイプが見つかりません</div>
+      <div class="muted">
+        URLの <code>?t=UMHDR</code> が空、または存在しないタイプです。<br>
+        一覧から再確認してください。
+      </div>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn btn--primary" href="./characters.html">一覧へ</a>
+        <a class="btn btn--ghost" href="../index.html">診断へ</a>
+      </div>
+    </section>
+  </main>
+
+  <script type="module">
+    import { getTypeInfo } from "../js/characters.js";
+    import { QUESTIONS } from "../js/questions.js";
+    import { loadState } from "../js/storage.js";
+    import { calculateResult, buildCode } from "../js/scoring.js";
+
+    const $ = (id) => document.getElementById(id);
+
+    try {
+      const elTypeCode = $("typeCode");
+      if (!elTypeCode) {
+        throw new Error('type.html側に id="typeCode" が存在しない（違うHTMLを読んでる可能性大）');
+      }
+
+      const params = new URLSearchParams(location.search);
+      let code = params.get("t");
+
+      if (!code) {
+        const state = loadState();
+        const answers = state?.answers;
+
+        if (!Array.isArray(answers) || answers.length !== QUESTIONS.length) {
+          throw new Error("回答データが見つからない/不足（?t= が無い、または storage の回答が壊れてる）");
+        }
+
+        const axis = calculateResult(answers, QUESTIONS);
+        code = buildCode(axis);
+      }
+
+      const info = getTypeInfo(code);
+
+      if (!info) {
+        $("notFound").style.display = "";
+        $("typeCode").textContent = code;
+        throw new Error("Unknown type: " + code);
+      }
+
+      $("typeCode").textContent = info.code || code;
+      $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
+      $("pageSub").textContent = info.axesText || "";
+      $("typeLabel").textContent = info.shortLabel || info.label || "";
+      $("groupBadge").textContent = info.group || "GROUP";
+      $("desc").textContent = info.description || "";
+
+      const fillList = (id, arr) => {
+        const ul = $(id);
+        if (!ul) return;
+        ul.innerHTML = "";
+        (arr || []).forEach((t) => {
+          const li = document.createElement("li");
+          li.textContent = t;
+          ul.appendChild(li);
+        });
+      };
+
+      fillList("strengths", info.strengths);
+      fillList("cautions", info.cautions);
+      fillList("tips", info.tips);
+
+    } catch (e) {
+      console.error(e);
+      alert("タイプ詳細の読み込みに失敗: " + (e?.message || String(e)));
     }
-
-    const axis = calculateResult(answers, QUESTIONS);
-    code = buildCode(axis);
-  }
-
-  // 3) コードからキャラ情報取得
-  const info = getTypeInfo(code);
-
-  // 見つからない時の表示
-  if (!info) {
-    $("notFound").style.display = "";
-    $("typeCode").textContent = code;
-    throw new Error("Unknown type: " + code);
-  }
-
-  // 4) 基本情報反映
-  $("typeCode").textContent = info.code || code;
-  $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
-  $("pageSub").textContent = info.axesText || "";
-  $("typeLabel").textContent = info.shortLabel || info.label || "";
-  $("groupBadge").textContent = info.group || "GROUP";
-  $("desc").textContent = info.description || "";
-
-  // 5) リスト反映
-  const fillList = (id, arr) => {
-    const ul = $(id);
-    if (!ul) return;
-    ul.innerHTML = "";
-    (arr || []).forEach((t) => {
-      const li = document.createElement("li");
-      li.textContent = t;
-      ul.appendChild(li);
-    });
-  };
-
-  fillList("strengths", info.strengths);
-  fillList("cautions", info.cautions);
-  fillList("tips", info.tips);
-
-} catch (e) {
-  console.error(e);
-  alert("タイプ詳細の読み込みに失敗: " + (e?.message || String(e)));
-}
-</script>
+  </script>
+</body>
+</html>
