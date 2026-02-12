@@ -1,4 +1,4 @@
-// js/index.js
+// /js/index.js
 import { QUESTIONS } from "./questions.js";
 import { loadState, saveState, resetState } from "./storage.js";
 import { calculateResult, buildCode } from "./scoring.js";
@@ -41,7 +41,7 @@ function updateProgressUI(state) {
   const progressBar = $("progressBar");
 
   if (progressText) progressText.textContent = `進捗 ${done} / ${total}`;
-  if (statusText) statusText.textContent = done >= total ? "完了" : "準備中…";
+  if (statusText) statusText.textContent = done >= total ? "判定完了" : "準備中...";
   if (progressBar) progressBar.style.width = `${Math.round((done / total) * 100)}%`;
 }
 
@@ -65,18 +65,21 @@ function showQuestion(state) {
   const i = state.current;
   const q = QUESTIONS[i];
 
-  $("qNumber").textContent = `Q${String(i + 1).padStart(2, "0")}`;
-  $("qText").textContent = q?.text ?? "（質問が見つかりません）";
+  const qNumber = $("qNumber");
+  const qText = $("qText");
 
-  const selected = state.answers[i];
-  renderChoices(selected);
+  if (qNumber) qNumber.textContent = `Q${String(i + 1).padStart(2, "0")}`;
+  if (qText) qText.textContent = q?.text ?? "（質問が見つかりません）";
+
+  renderChoices(state.answers[i]);
 
   const btnPrev = $("btnPrev");
   const btnNext = $("btnNext");
-  if (btnPrev) btnPrev.disabled = i <= 0;
-  if (btnNext) btnNext.disabled = selected == null;
 
-  // 結果カードは隠す（回答中は邪魔）
+  if (btnPrev) btnPrev.disabled = i <= 0;
+  if (btnNext) btnNext.disabled = state.answers[i] == null;
+
+  // 結果カードは隠す
   const resultCard = $("resultCard");
   if (resultCard) resultCard.classList.add("hidden");
 }
@@ -84,7 +87,7 @@ function showQuestion(state) {
 function goNext(state) {
   const total = QUESTIONS.length;
 
-  // 次の未回答へ
+  // 次の未回答へ（なければ結果）
   for (let i = state.current + 1; i < total; i++) {
     if (state.answers[i] == null) {
       state.current = i;
@@ -95,7 +98,6 @@ function goNext(state) {
     }
   }
 
-  // もう未回答がない → 結果表示
   renderResult(state);
 }
 
@@ -108,38 +110,41 @@ function goPrev(state) {
 
 function gaugeRow(left, pLeft, right, pRight) {
   return `
-  <div style="margin:14px 0;">
-    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
-      <div><b>${left}</b> (${pLeft}%)</div>
-      <div><b>${right}</b> (${pRight}%)</div>
+    <div style="margin:14px 0;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+        <div><b>${left}</b>（${pLeft}%）</div>
+        <div><b>${right}</b>（${pRight}%）</div>
+      </div>
+      <div style="height:10px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden;">
+        <div style="height:100%; width:${pLeft}%; background:linear-gradient(90deg, rgba(155,200,255,.95), rgba(110,190,255,.95));"></div>
+      </div>
     </div>
-    <div style="height:10px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden;">
-      <div style="height:100%; width:${pLeft}%; background:linear-gradient(90deg, rgba(155,200,255,.95), rgba(140,200,255,.65));"></div>
-    </div>
-  </div>`;
+  `;
 }
 
 function renderResult(state) {
   const axis = calculateResult(state.answers, QUESTIONS);
   const code = buildCode(axis);
 
-  // 結果カード表示
   const resultCard = $("resultCard");
   if (!resultCard) return;
 
-  $("resultType").textContent = code;
-  $("resultBadge").textContent = "判定完了";
-  $("resultDesc").textContent = "タイプ詳細ページで、強み・弱点・おすすめ行動が見れます。";
+  const resultType = $("resultType");
+  const resultBadge = $("resultBadge");
+  const resultDesc = $("resultDesc");
+
+  if (resultType) resultType.textContent = code;
+  if (resultBadge) resultBadge.textContent = "判定完了";
+  if (resultDesc) resultDesc.textContent = "タイプ詳細ページで、強み・弱点・おすすめ行動が見れます。";
 
   // 詳細リンク
   const btnDetail = $("btnDetail");
   if (btnDetail) btnDetail.href = `./pages/type.html?t=${encodeURIComponent(code)}`;
 
-  // 既存ゲージがあれば消す
+  // 既存ゲージがあれば入れ替え
   const old = document.getElementById("resultGauges");
   if (old) old.remove();
 
-  // ゲージカードを追加
   const wrap = document.createElement("div");
   wrap.id = "resultGauges";
   wrap.className = "card";
@@ -147,17 +152,17 @@ function renderResult(state) {
   wrap.innerHTML = `
     <div class="title">バランス（%）</div>
     <div class="muted">あなたの回答から算出した各軸の割合です</div>
-    ${gaugeRow("U", axis.UO.pl, "O", axis.UO.pr)}
-    ${gaugeRow("M", axis.MC.pl, "C", axis.MC.pr)}
-    ${gaugeRow("H", axis.HL.pl, "L", axis.HL.pr)}
-    ${gaugeRow("D", axis.DS.pl, "S", axis.DS.pr)}
-    ${gaugeRow("R", axis.RX.pl, "X", axis.RX.pr)}
+    ${gaugeRow("U", axis.UO.pL, "O", axis.UO.pR)}
+    ${gaugeRow("M", axis.MC.pL, "C", axis.MC.pR)}
+    ${gaugeRow("H", axis.HL.pL, "L", axis.HL.pR)}
+    ${gaugeRow("D", axis.DS.pL, "S", axis.DS.pR)}
+    ${gaugeRow("R", axis.RX.pL, "X", axis.RX.pR)}
   `;
 
   resultCard.classList.remove("hidden");
   resultCard.appendChild(wrap);
 
-  // ボタンは結果時は「次へ」無効化
+  // 結果時は「次へ」無効
   const btnNext = $("btnNext");
   if (btnNext) btnNext.disabled = true;
 
@@ -166,26 +171,35 @@ function renderResult(state) {
 }
 
 export function init() {
-  const state = ensureState();
+  let state = ensureState();
 
-  // イベント（choicesは委譲）
+  // 途中再開：最初の未回答へ
+  const firstUnanswered = state.answers.findIndex((v) => v == null);
+  state.current = firstUnanswered >= 0 ? firstUnanswered : QUESTIONS.length - 1;
+  saveState(state);
+
+  updateProgressUI(state);
+
+  // イベント（choices委譲）
   const choices = $("choices");
   if (choices) {
     choices.addEventListener("click", (e) => {
       const btn = e.target.closest("button");
       if (!btn) return;
+
       const v = Number(btn.dataset.value);
       if (![1, 2, 3, 4, 5].includes(v)) return;
 
+      // 記録
       state.answers[state.current] = v;
       saveState(state);
       updateProgressUI(state);
 
-      // 次へボタン有効化
+      // 次へ有効化
       const btnNext = $("btnNext");
       if (btnNext) btnNext.disabled = false;
 
-      // 自動で次へ（最後なら結果）
+      // 自動で次へ（最後は結果）
       if (answeredCount(state.answers) >= QUESTIONS.length) renderResult(state);
       else goNext(state);
     });
@@ -196,19 +210,11 @@ export function init() {
 
   $("btnRestart")?.addEventListener("click", () => {
     resetState();
-    const fresh = { answers: Array(QUESTIONS.length).fill(null), current: 0 };
-    saveState(fresh);
+    // まっさらにしてリロードが一番事故らない
     location.reload();
   });
 
-  // 初期表示：最初の未回答へ飛ばす
-  const firstUnanswered = state.answers.findIndex((v) => v == null);
-  state.current = firstUnanswered >= 0 ? firstUnanswered : QUESTIONS.length - 1;
-  saveState(state);
-
-  updateProgressUI(state);
-
-  // 全部回答済みなら結果表示、未完なら質問表示
+  // 初期表示
   if (answeredCount(state.answers) >= QUESTIONS.length) renderResult(state);
   else showQuestion(state);
 }
