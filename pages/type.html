@@ -72,55 +72,92 @@
     </section>
   </main>
 
-  <script type="module">
-    import { getTypeInfo } from "../js/characters.js";
+<script type="module">
+import { getTypeInfo } from "../js/characters.js";
+import { calculateResult } from "../js/scoring.js";
+import { loadAnswers } from "../js/storage.js";
 
-    const $ = (id) => document.getElementById(id);
+const $ = id => document.getElementById(id);
 
-    const params = new URLSearchParams(location.search);
-    const t = (params.get("t") || "").toUpperCase().trim();
+/* =====================
+   回答取得＆スコア計算
+===================== */
+const answers = loadAnswers();
+const axis = calculateResult(answers);
 
-    // t が無い/短いときは notFound を出す
-    if (!t || t.length < 5) {
-      $("notFound").style.display = "";
-      throw new Error("Missing type param: ?t=");
-    }
+const code =
+  axis.UO.main +
+  axis.MC.main +
+  axis.HL.main +
+  axis.DS.main +
+  axis.RX.main;
 
-    const info = getTypeInfo(t);
+const info = getTypeInfo(code);
 
-    // 取得できない場合も notFound
-    if (!info || !info.code) {
-      $("notFound").style.display = "";
-      throw new Error("Unknown type: " + t);
-    }
+/* =====================
+   エラー処理
+===================== */
+if (!info || !info.code) {
+  $("notFound").style.display = "";
+  throw new Error("Unknown type: " + code);
+}
 
-    $("typeCode").textContent = info.code;
-    $("pageTitle").textContent = `タイプ詳細：${info.code}`;
-    $("pageSub").textContent = info.axesText || "";
+/* =====================
+   基本情報セット
+===================== */
+$("typeCode").textContent = code;
+$("pageTitle").textContent = `タイプ詳細：${code}`;
+$("pageSub").textContent = info.axesText || "";
+$("typeLabel").textContent = info.shortLabel || "";
+$("desc").textContent = info.description || "";
 
-    $("typeLabel").textContent = info.shortLabel || "";
-    $("desc").textContent = info.description || "";
+/* =====================
+   パーセントゲージ生成
+===================== */
+function gauge(left, pLeft, right, pRight) {
+  return `
+    <div style="margin:16px 0;">
+      <div style="font-size:13px; margin-bottom:6px;">
+        <b>${left}</b> (${pLeft}%)　
+        <span style="opacity:.6">vs</span>
+        <b>${right}</b> (${pRight}%)
+      </div>
+      <div style="height:10px; background:#1c2640; border-radius:999px; overflow:hidden;">
+        <div style="
+          width:${pLeft}%;
+          height:100%;
+          background:linear-gradient(90deg,#5a8cff,#8c6bff);
+        "></div>
+      </div>
+    </div>
+  `;
+}
 
-    // バッジ（色）
-    const badge = $("groupBadge");
-    badge.textContent = info.group?.name || "GROUP";
-    badge.style.borderColor = info.color || "rgba(255,255,255,.25)";
-    badge.style.color = "var(--text)";
-    badge.style.background = "rgba(255,255,255,.06)";
+const gaugeWrap = document.createElement("div");
 
-    const fillList = (ulId, arr) => {
-      const ul = $(ulId);
-      ul.innerHTML = "";
-      (arr || []).forEach((text) => {
-        const li = document.createElement("li");
-        li.textContent = text;
-        ul.appendChild(li);
-      });
-    };
+gaugeWrap.innerHTML =
+  gauge("U", axis.UO.percentMain, "O", axis.UO.percentAlt) +
+  gauge("M", axis.MC.percentMain, "C", axis.MC.percentAlt) +
+  gauge("H", axis.HL.percentMain, "L", axis.HL.percentAlt) +
+  gauge("D", axis.DS.percentMain, "S", axis.DS.percentAlt) +
+  gauge("R", axis.RX.percentMain, "X", axis.RX.percentAlt);
 
-    fillList("strengths", info.strengths);
-    fillList("cautions", info.cautions);
-    fillList("tips", info.tips);
-  </script>
-</body>
-</html>
+document.querySelector(".resultHeader").after(gaugeWrap);
+
+/* =====================
+   リスト埋め込み
+===================== */
+function fillList(id, arr) {
+  const ul = $(id);
+  ul.innerHTML = "";
+  (arr || []).forEach(text => {
+    const li = document.createElement("li");
+    li.textContent = text;
+    ul.appendChild(li);
+  });
+}
+
+fillList("strengths", info.strengths);
+fillList("cautions", info.cautions);
+fillList("tips", info.tips);
+</script>
