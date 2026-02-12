@@ -1,163 +1,95 @@
-<!-- pages/type.html -->
-<!doctype html>
-<html lang="ja">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>タイプ詳細</title>
-
-  <link rel="stylesheet" href="../css/reset.css">
-  <link rel="stylesheet" href="../css/tokens.css">
-  <link rel="stylesheet" href="../css/base.css">
-  <link rel="stylesheet" href="../css/components.css">
-  <link rel="stylesheet" href="../css/index.css">
-</head>
-
-<body>
-  <header class="topbar">
-    <div class="topbar__left">
-      <div class="title" id="pageTitle">タイプ詳細</div>
-      <div class="subtitle" id="pageSub"></div>
-    </div>
-
-    <div class="topbar__right topbar__right--safe">
-      <a class="btn btn--ghost" href="./characters.html">一覧へ</a>
-      <a class="btn btn--ghost" href="../index.html">診断へ</a>
-    </div>
-  </header>
-
-  <main class="wrap">
-    <section class="card">
-      <div class="resultHeader">
-        <div>
-          <div class="resultTitle">あなたのタイプ</div>
-          <div class="resultType" id="typeCode">----</div>
-          <div class="muted" id="typeLabel"></div>
-        </div>
-
-        <div class="resultBadgeWrap">
-          <div class="badge" id="groupBadge">GROUP</div>
-        </div>
-      </div>
-
-      <p class="resultDesc" id="desc"></p>
-    </section>
-
-    <section class="card">
-      <div class="qtitle">強み</div>
-      <div class="muted">上位ほど “使うと勝てる” 性質。</div>
-      <ul class="list" id="strengths"></ul>
-    </section>
-
-    <section class="card">
-      <div class="qtitle">弱点・事故ポイント</div>
-      <ul class="list" id="cautions"></ul>
-    </section>
-
-    <section class="card">
-      <div class="qtitle">おすすめ行動</div>
-      <ul class="list" id="tips"></ul>
-    </section>
-
-    <section class="card" id="notFound" style="display:none;">
-      <div class="qtitle">タイプが見つかりません</div>
-      <div class="muted">
-        URLの <code>?t=UMHDR</code> が空、または存在しないタイプです。<br>
-        一覧から開き直してください。
-      </div>
-      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
-        <a class="btn btn--primary" href="./characters.html">一覧へ</a>
-        <a class="btn btn--ghost" href="../index.html">診断へ</a>
-      </div>
-    </section>
-  </main>
-
 <script type="module">
-import { getTypeInfo } from "../js/characters.js";
-import { calculateResult } from "../js/scoring.js";
-import { loadAnswers } from "../js/storage.js";
+  import { QUESTIONS } from "../js/questions.js";
+  import { loadState } from "../js/storage.js";
+  import { calculateResult, buildCode } from "../js/scoring.js";
+  import { getTypeInfo } from "../js/characters.js";
 
-const $ = id => document.getElementById(id);
+  const $ = (id) => document.getElementById(id);
 
-/* =====================
-   回答取得＆スコア計算
-===================== */
-const answers = loadAnswers();
-const axis = calculateResult(answers);
+  function gauge(left, pLeft, right, pRight) {
+    // pLeft/pRight は数値(0-100)を想定
+    const L = Number.isFinite(pLeft) ? Math.round(pLeft) : 0;
+    const R = Number.isFinite(pRight) ? Math.round(pRight) : 0;
 
-const code =
-  axis.UO.main +
-  axis.MC.main +
-  axis.HL.main +
-  axis.DS.main +
-  axis.RX.main;
-
-const info = getTypeInfo(code);
-
-/* =====================
-   エラー処理
-===================== */
-if (!info || !info.code) {
-  $("notFound").style.display = "";
-  throw new Error("Unknown type: " + code);
-}
-
-/* =====================
-   基本情報セット
-===================== */
-$("typeCode").textContent = code;
-$("pageTitle").textContent = `タイプ詳細：${code}`;
-$("pageSub").textContent = info.axesText || "";
-$("typeLabel").textContent = info.shortLabel || "";
-$("desc").textContent = info.description || "";
-
-/* =====================
-   パーセントゲージ生成
-===================== */
-function gauge(left, pLeft, right, pRight) {
-  return `
-    <div style="margin:16px 0;">
-      <div style="font-size:13px; margin-bottom:6px;">
-        <b>${left}</b> (${pLeft}%)　
-        <span style="opacity:.6">vs</span>
-        <b>${right}</b> (${pRight}%)
+    return `
+      <div style="margin:16px 0;">
+        <div style="font-size:13px; margin-bottom:6px; display:flex; justify-content:space-between;">
+          <div><b>${left}</b> (${L}%)</div>
+          <div><b>${right}</b> (${R}%)</div>
+        </div>
+        <div style="height:10px; background:#1c2640; border-radius:999px; overflow:hidden;">
+          <div style="
+            width:${L}%;
+            height:100%;
+            background:linear-gradient(90deg,#5a8cff,#8c6bff);
+          "></div>
+        </div>
       </div>
-      <div style="height:10px; background:#1c2640; border-radius:999px; overflow:hidden;">
-        <div style="
-          width:${pLeft}%;
-          height:100%;
-          background:linear-gradient(90deg,#5a8cff,#8c6bff);
-        "></div>
-      </div>
-    </div>
-  `;
-}
+    `;
+  }
 
-const gaugeWrap = document.createElement("div");
+  try {
+    // 1) 診断ページが保存した state を読む（index.js と同じ）
+    const state = loadState(); // { answers: [...], current: number } 想定
+    if (!state || !Array.isArray(state.answers)) {
+      throw new Error("保存された回答が見つかりません（localStorage）。診断を一度実行してから開いてください。");
+    }
 
-gaugeWrap.innerHTML =
-  gauge("U", axis.UO.percentMain, "O", axis.UO.percentAlt) +
-  gauge("M", axis.MC.percentMain, "C", axis.MC.percentAlt) +
-  gauge("H", axis.HL.percentMain, "L", axis.HL.percentAlt) +
-  gauge("D", axis.DS.percentMain, "S", axis.DS.percentAlt) +
-  gauge("R", axis.RX.percentMain, "X", axis.RX.percentAlt);
+    // 2) スコア計算（index.js と同じ呼び方に統一）
+    const axis = calculateResult(state.answers, QUESTIONS);
+    const code = buildCode(axis);
 
-document.querySelector(".resultHeader").after(gaugeWrap);
+    // 3) タイプ情報
+    const info = getTypeInfo(code);
 
-/* =====================
-   リスト埋め込み
-===================== */
-function fillList(id, arr) {
-  const ul = $(id);
-  ul.innerHTML = "";
-  (arr || []).forEach(text => {
-    const li = document.createElement("li");
-    li.textContent = text;
-    ul.appendChild(li);
-  });
-}
+    if (!info || !info.code) {
+      $("notFound").style.display = "";
+      throw new Error("Unknown type: " + code);
+    }
 
-fillList("strengths", info.strengths);
-fillList("cautions", info.cautions);
-fillList("tips", info.tips);
+    // 4) 基本情報
+    $("typeCode").textContent = info.code || code;
+    $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
+    $("pageSub").textContent = info.axesText || "";
+    $("typeLabel").textContent = info.shortLabel || "";
+    $("desc").textContent = info.description || "";
+
+    // バッジ
+    const badge = $("groupBadge");
+    badge.textContent = info.group2?.name || info.group || "GROUP";
+    badge.style.borderColor = info.color || "rgba(255,255,255,.25)";
+    badge.style.color = "var(--text)";
+    badge.style.background = "rgba(255,255,255,.06)";
+
+    // 5) パーセントゲージ（axis 側のプロパティに合わせる）
+    // index.js で使ってる axis.UO.pL / axis.UO.pR 形式に合わせる
+    const gaugeWrap = document.createElement("div");
+    gaugeWrap.innerHTML =
+      gauge("U", axis.UO?.pL, "O", axis.UO?.pR) +
+      gauge("M", axis.MC?.pL, "C", axis.MC?.pR) +
+      gauge("H", axis.HL?.pL, "L", axis.HL?.pR) +
+      gauge("D", axis.DS?.pL, "S", axis.DS?.pR) +
+      gauge("R", axis.RX?.pL, "X", axis.RX?.pR);
+
+    document.querySelector(".resultHeader")?.after(gaugeWrap);
+
+    // 6) リスト
+    function fillList(id, arr) {
+      const ul = $(id);
+      ul.innerHTML = "";
+      (arr || []).forEach((text) => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        ul.appendChild(li);
+      });
+    }
+
+    fillList("strengths", info.strengths);
+    fillList("cautions", info.cautions);
+    fillList("tips", info.tips);
+
+  } catch (e) {
+    console.error(e);
+    alert("タイプ詳細の読み込みに失敗: " + (e?.message || String(e)));
+  }
 </script>
