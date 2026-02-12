@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>タイプ一覧</title>
+<link rel="stylesheet" href="../css/style.css" />
+</head>
+
+<body>
+<header class="topbar">
+  <div class="topbar__left">
+    <h1 class="title">タイプ一覧</h1>
+    <p class="subtitle">32タイプ（U/O × M/C × H/L × D/S × R/X）</p>
+  </div>
+  <div class="topbar__right">
+    <a class="btn btn--ghost" href="../index.html">診断へ戻る</a>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="card">
+    <p class="muted">カードをタップすると type.html?t=XXXXX に移動します。</p>
+  </div>
+
+  <div class="grid" id="grid"></div>
+</main>
+
+<script type="module">
+  import { allTypes, getTypeInfo } from "../js/characters.js";
+
+  const grid = document.getElementById("grid");
+  const types = allTypes();
+
+  for(const t of types){
+    const info = getTypeInfo(t);
+
+    const a = document.createElement("a");
+    a.href = "./type.html?t=" + encodeURIComponent(t);
+
+    const tile = document.createElement("div");
+    tile.className = "tile";
+
+    const top = document.createElement("div");
+    top.className = "tileTop";
+
+    const tag = document.createElement("div");
+    tag.className = "tag";
+    tag.textContent = "TYPE";
+
+    const dot = document.createElement("div");
+    dot.className = "colorDot";
+    dot.style.background = info.color;
+    dot.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${info.color} 22%, transparent)`;
+
+    top.appendChild(tag);
+    top.appendChild(dot);
+
+    const title = document.createElement("div");
+    title.className = "tileTitle";
+    title.textContent = t;
+
+    const sub = document.createElement("div");
+    sub.className = "tileSub";
+    sub.textContent = info.summary;
+
+    tile.appendChild(top);
+    tile.appendChild(title);
+    tile.appendChild(sub);
+    a.appendChild(tile);
+    grid.appendChild(a);
+  }
+</script>
+</body>
+</html>
