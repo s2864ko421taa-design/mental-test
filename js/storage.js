@@ -1,28 +1,31 @@
-// js/storage.js
+// /js/storage.js
 const KEY = "mental_test_state_v1";
 
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return null;
-    const parsed = JSON.parse(raw);
-    if (!parsed || typeof parsed !== "object") return null;
-    return parsed;
+    return raw ? JSON.parse(raw) : null;
   } catch {
     return null;
   }
 }
 
 export function saveState(state) {
-  localStorage.setItem(KEY, JSON.stringify(state));
+  try {
+    localStorage.setItem(KEY, JSON.stringify(state));
+  } catch {
+    // 無視（Safariの容量制限など）
+  }
 }
 
 export function resetState() {
-  localStorage.removeItem(KEY);
+  try {
+    localStorage.removeItem(KEY);
+  } catch {}
 }
 
-// type.html 用（回答だけ欲しい場合）
+// type.html から使いたい場合用（answersだけ欲しい時）
 export function loadAnswers() {
-  const s = loadState();
-  return Array.isArray(s?.answers) ? s.answers : [];
+  const st = loadState();
+  return Array.isArray(st?.answers) ? st.answers : null;
 }
