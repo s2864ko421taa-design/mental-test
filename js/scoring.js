@@ -1,48 +1,67 @@
 // js/scoring.js
 
-export function calculateResult(answers) {
-  const axes = {
-    UO: { U: 0, O: 0 },
-    MC: { M: 0, C: 0 },
-    HL: { H: 0, L: 0 },
-    DS: { D: 0, S: 0 },
-    RX: { R: 0, X: 0 }
+export function calculateResult(answers = []) {
+
+  // 60問前提
+  const axisMap = [
+    "UO","UO","UO","UO","UO","UO","UO","UO","UO","UO","UO","UO",
+    "MC","MC","MC","MC","MC","MC","MC","MC","MC","MC","MC","MC",
+    "HL","HL","HL","HL","HL","HL","HL","HL","HL","HL","HL","HL",
+    "DS","DS","DS","DS","DS","DS","DS","DS","DS","DS","DS","DS",
+    "RX","RX","RX","RX","RX","RX","RX","RX","RX","RX","RX","RX"
+  ];
+
+  const result = {
+    UO: { U:0, O:0 },
+    MC: { M:0, C:0 },
+    HL: { H:0, L:0 },
+    DS: { D:0, S:0 },
+    RX: { R:0, X:0 }
   };
 
-  // 各軸12問ずつ
   answers.forEach((val, i) => {
+    const axis = axisMap[i];
+    if (!axis) return;
+
     const score = Number(val);
+    if (!score) return;
 
-    // 1,2 = 前側（強） / 4,5 = 後側（強）
-    const weight = score === 1 ? 2 :
-                   score === 2 ? 1 :
-                   score === 4 ? -1 :
-                   score === 5 ? -2 : 0;
+    // ①② → 前側
+    if (score === 1 || score === 2) {
+      const key = Object.keys(result[axis])[0];
+      result[axis][key]++;
+    }
 
-    if (i < 12) axes.UO.U += weight;
-    else if (i < 24) axes.MC.M += weight;
-    else if (i < 36) axes.HL.H += weight;
-    else if (i < 48) axes.DS.D += weight;
-    else axes.RX.R += weight;
+    // ④⑤ → 後側
+    if (score === 4 || score === 5) {
+      const key = Object.keys(result[axis])[1];
+      result[axis][key]++;
+    }
   });
 
-  const result = {};
+  // ===== 整形 =====
+  const formatted = {};
 
-  Object.entries(axes).forEach(([key, obj]) => {
-    const mainKey = Object.keys(obj)[0];
-    const altKey = Object.keys(obj)[1];
+  for (const axis in result) {
 
-    const raw = obj[mainKey];
+    const keys = Object.keys(result[axis]);
+    const left = keys[0];
+    const right = keys[1];
 
-    const percentMain = Math.round(((raw + 24) / 48) * 100);
-    const percentAlt = 100 - percentMain;
+    const leftScore = result[axis][left];
+    const rightScore = result[axis][right];
 
-    result[key] = {
-      main: percentMain >= percentAlt ? mainKey : altKey,
-      percentMain,
-      percentAlt
+    const total = leftScore + rightScore || 1;
+
+    const leftPct = Math.round((leftScore / total) * 100);
+    const rightPct = 100 - leftPct;
+
+    formatted[axis] = {
+      main: leftPct >= rightPct ? left : right,
+      percentMain: Math.max(leftPct, rightPct),
+      percentAlt: Math.min(leftPct, rightPct)
     };
-  });
+  }
 
-  return result;
+  return formatted;
 }
