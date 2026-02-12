@@ -1,67 +1,46 @@
 // js/scoring.js
+import { QUESTIONS } from "./questions.js";
 
-export function calculateResult(answers = []) {
+// 1=とても当てはまる → agreement=5
+// 5=全く当てはまらない → agreement=1
+const agreement = (choice1to5) => 6 - choice1to5;
 
-  // 60問前提
-  const axisMap = [
-    "UO","UO","UO","UO","UO","UO","UO","UO","UO","UO","UO","UO",
-    "MC","MC","MC","MC","MC","MC","MC","MC","MC","MC","MC","MC",
-    "HL","HL","HL","HL","HL","HL","HL","HL","HL","HL","HL","HL",
-    "DS","DS","DS","DS","DS","DS","DS","DS","DS","DS","DS","DS",
-    "RX","RX","RX","RX","RX","RX","RX","RX","RX","RX","RX","RX"
-  ];
+const AXES = {
+  UO: ["U", "O"],
+  MC: ["M", "C"],
+  HL: ["H", "L"],
+  DS: ["D", "S"],
+  RX: ["R", "X"],
+};
 
-  const result = {
-    UO: { U:0, O:0 },
-    MC: { M:0, C:0 },
-    HL: { H:0, L:0 },
-    DS: { D:0, S:0 },
-    RX: { R:0, X:0 }
-  };
+export function calculateResult(answers) {
+  // answers: index 0..59 => 1..5 (未回答は null/undefined)
+  const axis = {};
 
-  answers.forEach((val, i) => {
-    const axis = axisMap[i];
-    if (!axis) return;
+  for (const [axisKey, [left, right]] of Object.entries(AXES)) {
+    let leftSum = 0;
+    let rightSum = 0;
 
-    const score = Number(val);
-    if (!score) return;
+    QUESTIONS.filter(q => q.axis === axisKey).forEach((q, idx) => {
+      const a = answers[q.id - 1];
+      if (!a) return;
+      const pts = agreement(a);
 
-    // ①② → 前側
-    if (score === 1 || score === 2) {
-      const key = Object.keys(result[axis])[0];
-      result[axis][key]++;
-    }
+      if (q.side === left) leftSum += pts;
+      else rightSum += pts;
+    });
 
-    // ④⑤ → 後側
-    if (score === 4 || score === 5) {
-      const key = Object.keys(result[axis])[1];
-      result[axis][key]++;
-    }
-  });
-
-  // ===== 整形 =====
-  const formatted = {};
-
-  for (const axis in result) {
-
-    const keys = Object.keys(result[axis]);
-    const left = keys[0];
-    const right = keys[1];
-
-    const leftScore = result[axis][left];
-    const rightScore = result[axis][right];
-
-    const total = leftScore + rightScore || 1;
-
-    const leftPct = Math.round((leftScore / total) * 100);
+    const total = leftSum + rightSum || 1;
+    const leftPct = Math.round((leftSum / total) * 100);
     const rightPct = 100 - leftPct;
 
-    formatted[axis] = {
-      main: leftPct >= rightPct ? left : right,
-      percentMain: Math.max(leftPct, rightPct),
-      percentAlt: Math.min(leftPct, rightPct)
-    };
+    const main = leftSum >= rightSum ? left : right;
+    const alt  = main === left ? right : left;
+    const percentMain = main === left ? leftPct : rightPct;
+    const percentAlt  = 100 - percentMain;
+
+    axis[axisKey] = { main, alt, percentMain, percentAlt };
   }
 
-  return formatted;
+  return axis;
 }
