@@ -1,18 +1,15 @@
 // js/storage.js
-const KEY = "mental_test_v1";
+const KEY = "mental_test_state_v1";
 
 export function loadState() {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { answers: Array(60).fill(null), current: 0 };
-    const data = JSON.parse(raw);
-    const answers = Array.isArray(data.answers) ? data.answers : Array(60).fill(null);
-    const current = Number.isFinite(data.current) ? data.current : 0;
-    // 60問に整形
-    const fixed = Array(60).fill(null).map((_, i) => (answers[i] ?? null));
-    return { answers: fixed, current: Math.max(0, Math.min(59, current)) };
+    if (!raw) return null;
+    const parsed = JSON.parse(raw);
+    if (!parsed || typeof parsed !== "object") return null;
+    return parsed;
   } catch {
-    return { answers: Array(60).fill(null), current: 0 };
+    return null;
   }
 }
 
@@ -22,4 +19,10 @@ export function saveState(state) {
 
 export function resetState() {
   localStorage.removeItem(KEY);
+}
+
+// type.html 用（回答だけ欲しい場合）
+export function loadAnswers() {
+  const s = loadState();
+  return Array.isArray(s?.answers) ? s.answers : [];
 }
