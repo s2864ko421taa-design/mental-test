@@ -66,3 +66,39 @@ a {
   border: 1px solid rgba(255, 255, 255, 0.08);
   margin-bottom: 20px;
 }
+/* ===== Top-right buttons fix (type page) ===== */
+
+/* ヘッダー全体がズレても右上だけ安定させる */
+.topbar{
+  position: sticky;
+  top: 0;
+  z-index: 50;
+}
+
+/* 右側のボタン群を“縦積み”にして重なり防止 */
+.topbar__right,
+.topbar_right{
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 10px;
+  flex: 0 0 auto;
+}
+
+/* ボタンが勝手に潰れたり折り返して重なるのを防ぐ */
+.topbar__right .btn,
+.topbar_right .btn{
+  white-space: nowrap;
+  min-width: 96px;
+  text-align: center;
+}
+
+/* 画面が狭い時にボタンがはみ出さないように少し小さく */
+@media (max-width: 420px){
+  .topbar__right .btn,
+  .topbar_right .btn{
+    min-width: 86px;
+    padding: 10px 12px;
+    font-size: 14px;
+  }
+}
