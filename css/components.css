@@ -1,0 +1,57 @@
+/* ================================
+   タイプカード & 共通UIスタイル
+================================ */
+
+.grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
+  gap:16px;
+  margin-top:20px;
+}
+
+.tile{
+  background:rgba(255,255,255,0.05);
+  border-radius:14px;
+  padding:16px;
+  transition:0.2s ease;
+  border:1px solid rgba(255,255,255,0.08);
+}
+
+.tile:hover{
+  transform:translateY(-4px);
+  background:rgba(255,255,255,0.08);
+}
+
+.tileTop{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:12px;
+}
+
+.tag{
+  font-size:12px;
+  padding:5px 10px;
+  border-radius:999px;
+  background:rgba(255,255,255,0.1);
+  font-weight:600;
+}
+
+.colorDot{
+  width:12px;
+  height:12px;
+  border-radius:50%;
+  box-shadow:0 0 8px rgba(0,0,0,0.4);
+}
+
+.tileTitle{
+  font-size:18px;
+  font-weight:700;
+  margin-bottom:6px;
+}
+
+.tileSub{
+  font-size:12px;
+  opacity:0.75;
+  line-height:1.4;
+}
