@@ -4,28 +4,69 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>心理処理タイプ診断</title>
+
 <link rel="stylesheet" href="./css/style.css" />
 </head>
 
 <body>
-
-<header>
-  <h1>心理処理タイプ診断</h1>
-  <p>U/O・M/C・H/L・D/S・R/X（60問）</p>
-</header>
-
-<main>
-
-  <div id="progress">0 / 60</div>
-
-  <div class="card">
-    <div id="qNumber">Q1</div>
-    <div id="qText">読み込み中...</div>
+<header class="topbar">
+  <div class="topbar__left">
+    <h1 class="title">心理処理タイプ診断</h1>
+    <p class="subtitle">U/O・M/C・H/L・D/S・R/X（60問）</p>
   </div>
 
-  <div id="choices"></div>
+  <div class="topbar__right">
+    <a class="btn btn--ghost" href="./pages/characters.html">タイプ一覧</a>
+    <button class="btn btn--ghost" id="btnRestart" type="button">最初から</button>
+  </div>
+</header>
 
-  <div id="result" class="hidden"></div>
+<main class="wrap">
+
+  <div class="card">
+    <div class="row row--between row--center">
+      <div class="pill">
+        <span class="dot"></span>
+        <span id="progressText">進捗 0 / 60</span>
+      </div>
+      <span class="muted" id="statusText">準備中...</span>
+    </div>
+    <div class="progress"><div class="progress__bar" id="progressBar"></div></div>
+
+    <div class="qbox">
+      <div class="qnum" id="qNumber">Q1</div>
+      <div>
+        <div class="qtitle" id="qText">読み込み中...</div>
+        <div class="qhint">選択肢をタップすると自動で次へ進みます</div>
+      </div>
+    </div>
+
+    <div class="choices" id="choices"></div>
+
+    <div class="actions">
+      <button class="btn btn--ghost" id="btnPrev" type="button">戻る</button>
+      <button class="btn" id="btnNext" type="button" disabled>次へ</button>
+    </div>
+  </div>
+
+  <div class="card hidden" id="resultCard">
+    <div class="resultHeader">
+      <div>
+        <div class="resultTitle">あなたのタイプ</div>
+        <div class="resultType" id="resultType">----</div>
+      </div>
+      <div class="resultBadge" id="resultBadge">判定完了</div>
+    </div>
+
+    <p class="resultDesc" id="resultDesc">
+      タイプの詳細ページで、特徴・強み・注意点・おすすめ行動が見れます。
+    </p>
+
+    <div class="actions">
+      <a class="btn" id="btnDetail" href="./pages/type.html?t=UMHDR">キャラ詳細（説明）</a>
+      <a class="btn btn--ghost" href="./pages/characters.html">タイプ一覧へ</a>
+    </div>
+  </div>
 
 </main>
 
