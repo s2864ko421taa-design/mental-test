@@ -11,7 +11,7 @@ const CHOICES = [
   { value: 2, label: "○ やや当てはまる" },
   { value: 3, label: "△ どちらとも言えない" },
   { value: 4, label: "× あまり当てはまらない" },
-  { value: 5, label: "✕ 全く当てはまらない" },
+  { value: 5, label: "×× 全く当てはまらない" },
 ];
 
 function answeredCount(answers) {
@@ -76,9 +76,11 @@ function showQuestion(state) {
 
   const btnPrev = $("btnPrev");
   const btnNext = $("btnNext");
+
   if (btnPrev) btnPrev.disabled = i <= 0;
   if (btnNext) btnNext.disabled = state.answers[i] == null;
 
+  // 結果カードは隠す
   const resultCard = $("resultCard");
   if (resultCard) resultCard.classList.add("hidden");
 }
@@ -95,6 +97,8 @@ function goNext(state) {
       return;
     }
   }
+
+  // 全回答済み
   renderResult(state);
 }
 
@@ -107,23 +111,33 @@ function goPrev(state) {
 
 function gaugeRow(left, pLeft, right, pRight) {
   return `
-  <div style="margin:14px 0;">
-    <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
-      <div><b>${left}</b> (${pLeft}%)</div>
-      <div><b>${right}</b> (${pRight}%)</div>
+    <div style="margin:14px 0;">
+      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+        <div><b>${left}</b> (${pLeft}%)</div>
+        <div><b>${right}</b> (${pRight}%)</div>
+      </div>
+      <div style="height:10px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden;">
+        <div style="height:100%; width:${pLeft}%; background:linear-gradient(90deg, rgba(155,200,255,1), rgba(86,203,255,1));"></div>
+      </div>
     </div>
-    <div style="height:10px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden;">
-      <div style="height:100%; width:${pLeft}%; background:linear-gradient(90deg, rgba(155,200,255,.95), rgba(140,180,255,.95));"></div>
-    </div>
-  </div>`;
+  `;
 }
 
 function renderResult(state) {
   const axis = calculateResult(state.answers, QUESTIONS);
   const code = buildCode(axis);
 
-  // ✅ ここが「1234コードを入れる場所」：結果確定直後
-  recordResult(code, axis);
+  // ✅ ここが入れる場所（axis と code の直後）
+  // 同じコードをこのページ表示中に何回も保存しないガード
+  try {
+    const onceKey = `recorded:${code}`;
+    if (!sessionStorage.getItem(onceKey)) {
+      recordResult(code, axis);
+      sessionStorage.setItem(onceKey, "1");
+    }
+  } catch (e) {
+    console.error("recordResult failed:", e);
+  }
 
   const resultCard = $("resultCard");
   if (!resultCard) return;
@@ -137,9 +151,11 @@ function renderResult(state) {
   if (resultDesc)
     resultDesc.textContent = "タイプ詳細ページで、強み・弱点・おすすめ行動が見れます。";
 
+  // 詳細リンク
   const btnDetail = $("btnDetail");
   if (btnDetail) btnDetail.href = `./pages/type.html?t=${encodeURIComponent(code)}`;
 
+  // 既存ゲージがあれば入れ替え
   const old = document.getElementById("resultGauges");
   if (old) old.remove();
 
@@ -148,21 +164,22 @@ function renderResult(state) {
   wrap.className = "card";
   wrap.style.marginTop = "12px";
 
-  // axisの%が undefined になるなら、scoring.js の返し方とここがズレてる
-  // 今動いてる前提のプロパティ名で組んでる（UO/MC/HL/DS/RX + pL/pR）
+  // axis のプロパティ名はあなたの scoring.js に合わせている前提（U0/MC/HL/DS/RX と pL/pR）
+  // 例: axis.UO.pL / axis.UO.pR のような形で返ってくる想定
   wrap.innerHTML = `
     <div class="title">バランス（%）</div>
     <div class="muted">あなたの回答から算出した各軸の割合です</div>
-    ${gaugeRow("U", axis.UO.pL, "O", axis.UO.pR)}
-    ${gaugeRow("M", axis.MC.pL, "C", axis.MC.pR)}
-    ${gaugeRow("H", axis.HL.pL, "L", axis.HL.pR)}
-    ${gaugeRow("D", axis.DS.pL, "S", axis.DS.pR)}
-    ${gaugeRow("R", axis.RX.pL, "X", axis.RX.pR)}
+    ${gaugeRow("U", axis.UO?.pL ?? 0, "O", axis.UO?.pR ?? 0)}
+    ${gaugeRow("M", axis.MC?.pL ?? 0, "C", axis.MC?.pR ?? 0)}
+    ${gaugeRow("H", axis.HL?.pL ?? 0, "L", axis.HL?.pR ?? 0)}
+    ${gaugeRow("D", axis.DS?.pL ?? 0, "S", axis.DS?.pR ?? 0)}
+    ${gaugeRow("R", axis.RX?.pL ?? 0, "X", axis.RX?.pR ?? 0)}
   `;
 
   resultCard.classList.remove("hidden");
   resultCard.appendChild(wrap);
 
+  // 結果時は「次へ」無効
   const btnNext = $("btnNext");
   if (btnNext) btnNext.disabled = true;
 
@@ -173,12 +190,14 @@ function renderResult(state) {
 export function init() {
   const state = ensureState();
 
+  // 途中再開：最初の未回答へ
   const firstUnanswered = state.answers.findIndex((v) => v == null);
   state.current = firstUnanswered >= 0 ? firstUnanswered : QUESTIONS.length - 1;
   saveState(state);
 
   updateProgressUI(state);
 
+  // 選択肢クリック
   const choices = $("choices");
   if (choices) {
     choices.addEventListener("click", (e) => {
@@ -192,9 +211,11 @@ export function init() {
       saveState(state);
       updateProgressUI(state);
 
+      // 次へ有効化
       const btnNext = $("btnNext");
       if (btnNext) btnNext.disabled = false;
 
+      // 自動で次へ（最後は結果）
       if (answeredCount(state.answers) >= QUESTIONS.length) renderResult(state);
       else goNext(state);
     });
@@ -205,9 +226,11 @@ export function init() {
 
   $("btnRestart")?.addEventListener("click", () => {
     resetState();
+    sessionStorage.clear();
     location.reload();
   });
 
+  // 初期描画
   if (answeredCount(state.answers) >= QUESTIONS.length) renderResult(state);
   else showQuestion(state);
 }
