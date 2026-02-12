@@ -81,6 +81,8 @@
       ul.appendChild(li);
     }
   };
+  const main = document.querySelector(".card");
+main.classList.add(getColorByType(type));
 
   fillList("strengths", info.strengths || []);
   fillList("pitfalls", info.pitfalls || []);
