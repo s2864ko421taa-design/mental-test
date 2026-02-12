@@ -1,93 +1,93 @@
-<!DOCTYPE html>
+<!-- pages/type.html -->
+<!doctype html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>タイプ詳細</title>
-<link rel="stylesheet" href="../css/style.css" />
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>タイプ詳細</title>
+
+  <link rel="stylesheet" href="../css/reset.css">
+  <link rel="stylesheet" href="../css/tokens.css">
+  <link rel="stylesheet" href="../css/base.css">
+  <link rel="stylesheet" href="../css/components.css">
+  <link rel="stylesheet" href="../css/index.css">
 </head>
 
 <body>
-<header class="topbar">
-  <div class="topbar__left">
-    <h1 class="title">キャラ詳細</h1>
-    <p class="subtitle">タイプの説明・強み・注意点・おすすめ行動</p>
-  </div>
-  <div class="topbar__right">
-    <a class="btn btn--ghost" href="./characters.html">タイプ一覧</a>
-    <a class="btn btn--ghost" href="../index.html">診断へ戻る</a>
-  </div>
-</header>
-
-<main class="wrap">
-  <div class="card hero" id="hero">
-    <div class="heroTop">
-      <div>
-        <div class="heroName" id="name">読み込み中...</div>
-        <div class="heroType" id="type">-----</div>
-      </div>
-
-      <div class="badgeColor">
-        <div class="colorDot" id="colorDot"></div>
-        <div class="muted" id="colorText">color</div>
-      </div>
+  <header class="topbar">
+    <div class="topbar__left">
+      <div class="title" id="pageTitle">タイプ詳細</div>
+      <div class="subtitle" id="pageSub"></div>
     </div>
+    <div class="topbar__right">
+      <a class="btn btn--ghost" href="./characters.html">一覧へ</a>
+      <a class="btn btn--ghost" href="../index.html">診断へ</a>
+    </div>
+  </header>
 
-    <p class="desc" id="summary"></p>
+  <main class="wrap">
+    <section class="card">
+      <div class="resultHeader">
+        <div>
+          <div class="resultTitle">あなたのタイプ</div>
+          <div class="resultType" id="typeCode">-----</div>
+        </div>
+        <div class="resultBadge" id="groupBadge">GROUP</div>
+      </div>
 
-    <div class="sectionTitle">強み</div>
-    <ul class="list" id="strengths"></ul>
+      <p class="resultDesc" id="desc"></p>
+    </section>
 
-    <div class="sectionTitle">注意点</div>
-    <ul class="list" id="pitfalls"></ul>
+    <section class="card">
+      <div class="qtitle">強み</div>
+      <div class="muted" style="margin-top:6px">上位ほど “使うと勝てる” 性質。</div>
+      <ul id="strengths" style="margin-top:10px; line-height:1.7"></ul>
+    </section>
 
-    <div class="sectionTitle">おすすめ行動</div>
-    <ul class="list" id="tips"></ul>
+    <section class="card">
+      <div class="qtitle">弱点・事故ポイント</div>
+      <ul id="cautions" style="margin-top:10px; line-height:1.7"></ul>
+    </section>
 
-    <div class="sectionTitle">キャラ例</div>
-    <ul class="list" id="examples"></ul>
-  </div>
-</main>
+    <section class="card">
+      <div class="qtitle">おすすめ行動</div>
+      <ul id="tips" style="margin-top:10px; line-height:1.7"></ul>
+    </section>
+  </main>
 
-<script type="module">
-  import { getTypeInfo } from "../js/characters.js";
+  <script type="module">
+    import { getTypeInfo } from "../js/characters.js";
 
-  const params = new URLSearchParams(location.search);
-  const t = (params.get("t") || "").toUpperCase().trim();
+    const params = new URLSearchParams(location.search);
+    const t = (params.get("t") || "").toUpperCase().trim();
+    const info = getTypeInfo(t);
 
-  const valid = /^[UO][MC][HL][DS][RX]$/.test(t);
-  const type = valid ? t : "UMHDR"; // 変でも落ちない
+    const $ = (id) => document.getElementById(id);
 
-  const info = getTypeInfo(type);
+    $("typeCode").textContent = info.code;
+    $("pageTitle").textContent = `タイプ詳細：${info.code}`;
+    $("pageSub").textContent = info.axesText || "";
 
-  document.title = "タイプ詳細 - " + info.type;
+    $("groupBadge").textContent = info.group?.name || "GROUP";
+    $("groupBadge").style.borderColor = info.color;
+    $("groupBadge").style.color = "#eaf0ff";
+    $("groupBadge").style.background = "rgba(255,255,255,.06)";
 
-  document.getElementById("name").textContent = info.name;
-  document.getElementById("type").textContent = info.type;
-  document.getElementById("summary").textContent = info.summary;
+    $("desc").textContent = info.description || "";
 
-  const dot = document.getElementById("colorDot");
-  dot.style.background = info.color;
-  dot.style.boxShadow = `0 0 0 3px color-mix(in srgb, ${info.color} 22%, transparent)`;
+    const fillList = (ulId, arr) => {
+      const ul = $(ulId);
+      ul.innerHTML = "";
+      (arr || []).forEach((text) => {
+        const li = document.createElement("li");
+        li.textContent = text;
+        ul.appendChild(li);
+      });
+    };
 
-  document.getElementById("colorText").textContent = info.color;
-
-  const fillList = (id, arr)=>{
-    const ul = document.getElementById(id);
-    ul.innerHTML = "";
-    for(const x of arr){
-      const li = document.createElement("li");
-      li.textContent = x;
-      ul.appendChild(li);
-    }
-  };
-  const main = document.querySelector(".card");
-main.classList.add(getColorByType(type));
-
-  fillList("strengths", info.strengths || []);
-  fillList("pitfalls", info.pitfalls || []);
-  fillList("tips", info.tips || []);
-  fillList("examples", info.examples || []);
-</script>
+    fillList("strengths", info.strengths);
+    fillList("cautions", info.cautions);
+    fillList("tips", info.tips);
+  </script>
 </body>
 </html>
