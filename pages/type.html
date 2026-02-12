@@ -19,7 +19,8 @@
       <div class="title" id="pageTitle">タイプ詳細</div>
       <div class="subtitle" id="pageSub"></div>
     </div>
-    <div class="topbar__right">
+
+    <div class="topbar__right topbar__right--safe">
       <a class="btn btn--ghost" href="./characters.html">一覧へ</a>
       <a class="btn btn--ghost" href="../index.html">診断へ</a>
     </div>
@@ -30,9 +31,13 @@
       <div class="resultHeader">
         <div>
           <div class="resultTitle">あなたのタイプ</div>
-          <div class="resultType" id="typeCode">-----</div>
+          <div class="resultType" id="typeCode">----</div>
+          <div class="muted" id="typeLabel"></div>
         </div>
-        <div class="resultBadge" id="groupBadge">GROUP</div>
+
+        <div class="resultBadgeWrap">
+          <div class="badge" id="groupBadge">GROUP</div>
+        </div>
       </div>
 
       <p class="resultDesc" id="desc"></p>
@@ -40,40 +45,68 @@
 
     <section class="card">
       <div class="qtitle">強み</div>
-      <div class="muted" style="margin-top:6px">上位ほど “使うと勝てる” 性質。</div>
-      <ul id="strengths" style="margin-top:10px; line-height:1.7"></ul>
+      <div class="muted">上位ほど “使うと勝てる” 性質。</div>
+      <ul class="list" id="strengths"></ul>
     </section>
 
     <section class="card">
       <div class="qtitle">弱点・事故ポイント</div>
-      <ul id="cautions" style="margin-top:10px; line-height:1.7"></ul>
+      <ul class="list" id="cautions"></ul>
     </section>
 
     <section class="card">
       <div class="qtitle">おすすめ行動</div>
-      <ul id="tips" style="margin-top:10px; line-height:1.7"></ul>
+      <ul class="list" id="tips"></ul>
+    </section>
+
+    <section class="card" id="notFound" style="display:none;">
+      <div class="qtitle">タイプが見つかりません</div>
+      <div class="muted">
+        URLの <code>?t=UMHDR</code> が空、または存在しないタイプです。<br>
+        一覧から開き直してください。
+      </div>
+      <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
+        <a class="btn btn--primary" href="./characters.html">一覧へ</a>
+        <a class="btn btn--ghost" href="../index.html">診断へ</a>
+      </div>
     </section>
   </main>
 
   <script type="module">
     import { getTypeInfo } from "../js/characters.js";
 
+    const $ = (id) => document.getElementById(id);
+
     const params = new URLSearchParams(location.search);
     const t = (params.get("t") || "").toUpperCase().trim();
+
+    // t が無い/短いときは notFound を出す
+    if (!t || t.length < 5) {
+      $("notFound").style.display = "";
+      throw new Error("Missing type param: ?t=");
+    }
+
     const info = getTypeInfo(t);
 
-    const $ = (id) => document.getElementById(id);
+    // 取得できない場合も notFound
+    if (!info || !info.code) {
+      $("notFound").style.display = "";
+      throw new Error("Unknown type: " + t);
+    }
 
     $("typeCode").textContent = info.code;
     $("pageTitle").textContent = `タイプ詳細：${info.code}`;
     $("pageSub").textContent = info.axesText || "";
 
-    $("groupBadge").textContent = info.group?.name || "GROUP";
-    $("groupBadge").style.borderColor = info.color;
-    $("groupBadge").style.color = "#eaf0ff";
-    $("groupBadge").style.background = "rgba(255,255,255,.06)";
-
+    $("typeLabel").textContent = info.shortLabel || "";
     $("desc").textContent = info.description || "";
+
+    // バッジ（色）
+    const badge = $("groupBadge");
+    badge.textContent = info.group?.name || "GROUP";
+    badge.style.borderColor = info.color || "rgba(255,255,255,.25)";
+    badge.style.color = "var(--text)";
+    badge.style.background = "rgba(255,255,255,.06)";
 
     const fillList = (ulId, arr) => {
       const ul = $(ulId);
