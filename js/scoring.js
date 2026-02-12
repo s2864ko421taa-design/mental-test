@@ -1,75 +1,100 @@
-// js/scoring.js
+// /js/scoring.js
 
-const AXES = {
-  UO: { main: "U", alt: "O" },
-  MC: { main: "M", alt: "C" },
-  HL: { main: "H", alt: "L" },
-  DS: { main: "D", alt: "S" },
-  RX: { main: "R", alt: "X" },
-};
+const AXES = [
+  { key: "UO", left: "U", right: "O" },
+  { key: "MC", left: "M", right: "C" },
+  { key: "HL", left: "H", right: "L" },
+  { key: "DS", left: "D", right: "S" },
+  { key: "RX", left: "R", right: "X" },
+];
 
-// 1=とても当てはまる, 2=やや, 3=中立, 4=あまり, 5=全く
-// 1ほど「その文に賛成」→ side 方向に強く寄る
-function agreeStrength(value) {
-  // 1->+2, 2->+1, 3->0, 4->-1, 5->-2
-  return 3 - Number(value);
+function clamp(n, a, b) {
+  return Math.max(a, Math.min(b, n));
 }
 
-/**
- * questions.js の各設問はこういう形を想定：
- * { id: 1, axis: "UO", side: "U", text: "..." }
- * side は「その文に賛成したら寄る側の文字」
- */
+// 1..5 を -2..+2 に変換（1=強く当てはまる→そのside寄り）
+function likertToSigned(v) {
+  const x = Number(v);
+  if (![1, 2, 3, 4, 5].includes(x)) return 0;
+  return 3 - x; // 1→+2, 2→+1, 3→0, 4→-1, 5→-2
+}
+
+function axisPair(axisKey) {
+  const a = AXES.find((x) => x.key === axisKey);
+  if (!a) return null;
+  return { left: a.left, right: a.right };
+}
+
 export function calculateResult(answers, QUESTIONS) {
   const out = {};
-  for (const k of Object.keys(AXES)) {
-    out[k] = {
-      main: AXES[k].main,
-      alt: AXES[k].alt,
-      pointsMain: 0,
-      pointsAlt: 0,
-      percentMain: 50,
-      percentAlt: 50,
+
+  for (const a of AXES) {
+    out[a.key] = {
+      main: a.left,     // 仮（あとで決める）
+      alt: a.right,
+      pMain: 50,
+      pAlt: 50,
+      pL: 50,
+      pR: 50,
+      left: a.left,
+      right: a.right,
     };
+  }
+
+  // 各軸：left/right のポイントを積む（ポイント=abs( signed )）
+  const pts = {};
+  for (const a of AXES) {
+    pts[a.key] = { L: 0, R: 0 };
   }
 
   for (let i = 0; i < QUESTIONS.length; i++) {
     const q = QUESTIONS[i];
-    const v = answers[i];
-    if (!v) continue;
+    const v = answers?.[i];
+    if (v == null) continue;
+
+    const signed = likertToSigned(v);
+    if (signed === 0) continue;
+
+    const pair = axisPair(q.axis);
+    if (!pair) continue;
+
+    const magnitude = Math.abs(signed);
+    const side = q.side; // "U" or "O" etc
+
+    // signed>0 は q.side 側に寄る、signed<0 は反対側に寄る
+    const toward = signed > 0 ? side : (side === pair.left ? pair.right : pair.left);
 
     const axisKey = q.axis;
-    const axis = out[axisKey];
-    if (!axis) continue;
-
-    const s = agreeStrength(v);
-    if (s === 0) continue;
-
-    // s>0 は「文に賛成」＝ q.side に寄る
-    // s<0 は「文に反対」＝ 反対側に寄る
-    const toward = s > 0 ? q.side : (q.side === axis.main ? axis.alt : axis.main);
-    const add = Math.abs(s);
-
-    if (toward === axis.main) axis.pointsMain += add;
-    else axis.pointsAlt += add;
+    if (toward === pair.left) pts[axisKey].L += magnitude;
+    if (toward === pair.right) pts[axisKey].R += magnitude;
   }
 
-  for (const k of Object.keys(out)) {
-    const a = out[k];
-    const total = a.pointsMain + a.pointsAlt;
-    if (total <= 0) {
-      a.percentMain = 50;
-      a.percentAlt = 50;
-    } else {
-      a.percentMain = Math.round((a.pointsMain / total) * 100);
-      a.percentAlt = 100 - a.percentMain;
-    }
-    // 表示用：どっちが勝ちか
-    a.pick = a.pointsMain >= a.pointsAlt ? a.main : a.alt;
+  for (const a of AXES) {
+    const p = pts[a.key];
+    const total = p.L + p.R;
 
-    // index.js のゲージ用（左=main, 右=alt）
-    a.pl = a.percentMain;
-    a.pr = a.percentAlt;
+    let pL = 50, pR = 50;
+    if (total > 0) {
+      pL = Math.round((p.L / total) * 100);
+      pR = 100 - pL;
+    }
+
+    // main は多い方
+    const main = p.L >= p.R ? a.left : a.right;
+    const alt = main === a.left ? a.right : a.left;
+    const pMain = main === a.left ? pL : pR;
+    const pAlt = 100 - pMain;
+
+    out[a.key] = {
+      main,
+      alt,
+      pMain,
+      pAlt,
+      pL,
+      pR,
+      left: a.left,
+      right: a.right,
+    };
   }
 
   return out;
@@ -77,10 +102,10 @@ export function calculateResult(answers, QUESTIONS) {
 
 export function buildCode(axis) {
   return (
-    axis.UO.pick +
-    axis.MC.pick +
-    axis.HL.pick +
-    axis.DS.pick +
-    axis.RX.pick
+    axis.UO.main +
+    axis.MC.main +
+    axis.HL.main +
+    axis.DS.main +
+    axis.RX.main
   );
 }
