@@ -1,123 +1,127 @@
 // js/index.js
-import { QUESTIONS, CHOICES } from "./questions.js";
-import { saveAnswer, loadAnswers, clearAnswers } from "./storage.js";
+import { QUESTIONS } from "./questions.js";
+import { calculateResult } from "./scoring.js";
+import { loadAnswers, saveAnswers, clearAnswers } from "./storage.js";
 
 const $ = (id) => document.getElementById(id);
 
-function ensureLen60(arr) {
-  const out = Array.isArray(arr) ? arr.slice(0, 60) : [];
-  while (out.length < 60) out.push(null);
-  return out;
+const CHOICES = [
+  { v: 1, label: "① とても当てはまる" },
+  { v: 2, label: "② やや当てはまる" },
+  { v: 3, label: "③ どちらとも言えない" },
+  { v: 4, label: "④ あまり当てはまらない" },
+  { v: 5, label: "⑤ 全く当てはまらない" },
+];
+
+function typeCodeFromAxis(axis) {
+  return axis.UO.main + axis.MC.main + axis.HL.main + axis.DS.main + axis.RX.main;
 }
 
-function clamp(n, min, max) {
-  return Math.max(min, Math.min(max, n));
+function updateProgress(i, answers) {
+  const done = answers.filter(Boolean).length;
+  $("progressText").textContent = `進捗 ${done} / ${QUESTIONS.length}`;
+  $("statusText").textContent = done === QUESTIONS.length ? "完了" : "準備中…";
+  const pct = Math.round((done / QUESTIONS.length) * 100);
+  $("progressBar").style.width = `${pct}%`;
+  $("qNumber").textContent = `Q${i + 1}`;
 }
 
-function setStatus(text) {
-  const el = $("statusText");
-  if (el) el.textContent = text;
-}
+function renderQuestion(i, answers) {
+  const q = QUESTIONS[i];
+  $("qText").textContent = q.text;
 
-function render(state) {
-  const i = state.index;
-
-  // progress
-  if ($("progressText")) $("progressText").textContent = `進捗 ${i} / 60`;
-  if ($("progressBar")) $("progressBar").style.width = `${Math.round((i / 60) * 100)}%`;
-
-  // question
-  if ($("qNumber")) $("qNumber").textContent = `Q${i + 1}`;
-  if ($("qText")) $("qText").textContent = QUESTIONS[i] || "（質問がありません）";
-
-  // choices
-  const area = $("choices");
-  area.innerHTML = "";
-
-  const current = state.answers[i];
+  const box = $("choices");
+  box.innerHTML = "";
 
   CHOICES.forEach((c) => {
-    const b = document.createElement("button");
-    b.type = "button";
-    b.className = "choice";
-    b.textContent = `${c.value}. ${c.label}`;
-    if (current === c.value) b.classList.add("is-selected");
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.className = "choice";
+    btn.textContent = c.label;
 
-    b.addEventListener("click", () => {
-      state.answers[i] = c.value;
-      saveAnswer(i, c.value);
+    const selected = answers[q.id - 1] === c.v;
+    if (selected) btn.classList.add("isSelected");
 
-      [...area.querySelectorAll(".choice")].forEach((x) => x.classList.remove("is-selected"));
-      b.classList.add("is-selected");
-
-      // auto next
-      if (i < 59) {
-        state.index++;
-        render(state);
+    btn.addEventListener("click", () => {
+      answers[q.id - 1] = c.v;
+      saveAnswers(answers);
+      // 次へ自動
+      if (i < QUESTIONS.length - 1) {
+        state.i++;
+        mount();
       } else {
-        location.href = "./pages/type.html";
+        showResult();
       }
     });
 
-    area.appendChild(b);
+    box.appendChild(btn);
   });
 
-  // buttons
-  const prev = $("btnPrev");
-  const next = $("btnNext");
-  if (prev) prev.disabled = i <= 0;
-  if (next) next.disabled = state.answers[i] == null;
+  $("btnPrev").disabled = i === 0;
+  $("btnNext").disabled = !answers[q.id - 1];
 }
 
-function boot() {
-  if (!Array.isArray(QUESTIONS) || QUESTIONS.length !== 60) {
-    setStatus("questions.js が 60問になってない");
-    return;
+function showResult() {
+  const answers = state.answers;
+  const axis = calculateResult(answers);
+  const code = typeCodeFromAxis(axis);
+
+  // 結果カード表示
+  $("resultCard").classList.remove("hidden");
+  $("resultType").textContent = code;
+  $("resultBadge").textContent = "判定完了";
+  $("resultDesc").textContent =
+    "タイプ詳細ページで、強み・弱点・おすすめ行動が見れます。";
+
+  // 詳細リンク
+  $("btnDetail").href = `./pages/type.html?t=${encodeURIComponent(code)}`;
+
+  // 進行UIは見せたままでもいいけど、邪魔ならここで隠してOK
+  // 例: document.querySelector(".qbox").style.display="none";
+}
+
+function mount() {
+  const i = state.i;
+  updateProgress(i, state.answers);
+  renderQuestion(i, state.answers);
+}
+
+const state = {
+  i: 0,
+  answers: [],
+};
+
+export function init() {
+  // 初期化
+  state.answers = loadAnswers();
+  if (state.answers.length < QUESTIONS.length) {
+    state.answers.length = QUESTIONS.length;
   }
 
-  setStatus("準備OK");
-
-  const state = {
-    answers: ensureLen60(loadAnswers()),
-    index: 0,
-  };
-
-  // resume to first unanswered
-  const firstNull = state.answers.findIndex((v) => v == null);
-  if (firstNull >= 0) state.index = clamp(firstNull, 0, 59);
-
-  // nav wiring
-  $("btnPrev")?.addEventListener("click", () => {
-    state.index = clamp(state.index - 1, 0, 59);
-    render(state);
-  });
-
-  $("btnNext")?.addEventListener("click", () => {
-    if (state.answers[state.index] == null) return;
-    if (state.index < 59) {
-      state.index++;
-      render(state);
-    } else {
-      location.href = "./pages/type.html";
+  $("btnPrev").addEventListener("click", () => {
+    if (state.i > 0) {
+      state.i--;
+      mount();
     }
   });
 
-  $("btnRestart")?.addEventListener("click", () => {
-    if (!confirm("最初からやり直す？")) return;
-    clearAnswers();
-    state.answers = ensureLen60([]);
-    state.index = 0;
-    render(state);
+  $("btnNext").addEventListener("click", () => {
+    if (state.i < QUESTIONS.length - 1) {
+      state.i++;
+      mount();
+    } else {
+      showResult();
+    }
   });
 
-  render(state);
-}
+  $("btnRestart").addEventListener("click", () => {
+    clearAnswers();
+    state.answers = new Array(QUESTIONS.length).fill(undefined);
+    state.i = 0;
+    $("resultCard").classList.add("hidden");
+    mount();
+  });
 
-document.addEventListener("DOMContentLoaded", () => {
-  try {
-    boot();
-  } catch (e) {
-    console.error(e);
-    setStatus("JSエラー: " + (e?.message || e));
-  }
-});
+  // 先に最初の画面を描画
+  mount();
+}
