@@ -79,35 +79,44 @@
 
     const $ = (id) => document.getElementById(id);
 
-    try {
-      const elTypeCode = $("typeCode");
-      if (!elTypeCode) {
-        throw new Error('type.html側に id="typeCode" が存在しない（違うHTMLを読んでる可能性大）');
-      }
+    const fail = (msg) => {
+      console.error(msg);
+      alert("タイプ詳細の読み込みに失敗: " + msg);
+    };
 
+    try {
+      // DOM存在チェック（ここで落ちるなら “このHTML自体が壊れてる/違うファイルを読んでる”）
+      if (!$("typeCode")) throw new Error('id="typeCode" が見つかりません（type.htmlがscriptだけになってない？/別HTML読んでない？）');
+
+      // URLから code を取る（例: ?t=UMLSR）
       const params = new URLSearchParams(location.search);
       let code = params.get("t");
 
+      // 無ければ storage の回答から算出
       if (!code) {
         const state = loadState();
         const answers = state?.answers;
 
         if (!Array.isArray(answers) || answers.length !== QUESTIONS.length) {
-          throw new Error("回答データが見つからない/不足（?t= が無い、または storage の回答が壊れてる）");
+          throw new Error("回答データが無い/不足（?t=無し & storageの回答も無い）");
         }
 
         const axis = calculateResult(answers, QUESTIONS);
         code = buildCode(axis);
       }
 
+      // キャラ情報取得
       const info = getTypeInfo(code);
 
+      // 見つからない
       if (!info) {
-        $("notFound").style.display = "";
-        $("typeCode").textContent = code;
+        const nf = $("notFound");
+        if (nf) nf.style.display = "";
+        $("typeCode").textContent = code || "----";
         throw new Error("Unknown type: " + code);
       }
 
+      // 基本反映
       $("typeCode").textContent = info.code || code;
       $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
       $("pageSub").textContent = info.axesText || "";
@@ -115,6 +124,7 @@
       $("groupBadge").textContent = info.group || "GROUP";
       $("desc").textContent = info.description || "";
 
+      // リスト反映
       const fillList = (id, arr) => {
         const ul = $(id);
         if (!ul) return;
@@ -131,8 +141,7 @@
       fillList("tips", info.tips);
 
     } catch (e) {
-      console.error(e);
-      alert("タイプ詳細の読み込みに失敗: " + (e?.message || String(e)));
+      fail(e?.message || String(e));
     }
   </script>
 </body>
