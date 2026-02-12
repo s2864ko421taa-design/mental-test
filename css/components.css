@@ -55,3 +55,37 @@
   opacity:0.75;
   line-height:1.4;
 }
+/* === type/characters の右上ボタン崩れ対策 === */
+.topbar__right--safe{
+  display:flex;
+  gap:10px;
+  align-items:center;
+  flex-wrap:wrap;          /* 端末幅が狭い時に綺麗に折り返す */
+  justify-content:flex-end;
+}
+
+.btn{
+  white-space:nowrap;      /* ボタン文字が変に縦割れしない */
+}
+
+/* badge（type.htmlのGROUP） */
+.badge{
+  display:inline-flex;
+  align-items:center;
+  gap:8px;
+  padding:8px 12px;
+  border:1px solid rgba(255,255,255,.18);
+  border-radius:999px;
+  font-size:12px;
+  letter-spacing:.08em;
+}
+
+/* list見た目（強み/弱点/おすすめ） */
+.list{
+  margin-top:10px;
+  padding-left:18px;
+  line-height:1.7;
+}
+.list li{
+  margin:6px 0;
+}
