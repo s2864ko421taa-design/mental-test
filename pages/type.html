@@ -1,3 +1,4 @@
+<!-- pages/type.html -->
 <!doctype html>
 <html lang="ja">
 <head>
@@ -61,7 +62,7 @@
     <section class="card" id="notFound" style="display:none;">
       <div class="title">タイプが見つかりません</div>
       <div class="muted">
-        URLの <code>?t=UMHDR</code> が空、または存在しないタイプです。<br>
+        URLの <code>?t=OMHSX</code> が空、または存在しないタイプです。<br>
         一覧から再確認してください。
       </div>
       <div style="margin-top:12px; display:flex; gap:10px; flex-wrap:wrap;">
@@ -85,46 +86,38 @@
     };
 
     try {
-      // DOM存在チェック（ここで落ちるなら “このHTML自体が壊れてる/違うファイルを読んでる”）
-      if (!$("typeCode")) throw new Error('id="typeCode" が見つかりません（type.htmlがscriptだけになってない？/別HTML読んでない？）');
+      if (!$("typeCode")) throw new Error('id="typeCode" が見つかりません（HTMLが違う）');
 
-      // URLから code を取る（例: ?t=UMLSR）
       const params = new URLSearchParams(location.search);
       let code = params.get("t");
 
-      // 無ければ storage の回答から算出
       if (!code) {
         const state = loadState();
         const answers = state?.answers;
-
         if (!Array.isArray(answers) || answers.length !== QUESTIONS.length) {
-          throw new Error("回答データが無い/不足（?t=無し & storageの回答も無い）");
+          throw new Error("回答データが無い/不足（?t=無し & storageに回答無し）");
         }
-
         const axis = calculateResult(answers, QUESTIONS);
         code = buildCode(axis);
       }
 
-      // キャラ情報取得
+      code = String(code).toUpperCase().trim();
+
       const info = getTypeInfo(code);
 
-      // 見つからない
       if (!info) {
-        const nf = $("notFound");
-        if (nf) nf.style.display = "";
+        $("notFound").style.display = "";
         $("typeCode").textContent = code || "----";
         throw new Error("Unknown type: " + code);
       }
 
-      // 基本反映
       $("typeCode").textContent = info.code || code;
       $("pageTitle").textContent = `タイプ詳細: ${info.code || code}`;
       $("pageSub").textContent = info.axesText || "";
       $("typeLabel").textContent = info.shortLabel || info.label || "";
-      $("groupBadge").textContent = info.group || "GROUP";
+      $("groupBadge").textContent = info.group?.name || "GROUP";
       $("desc").textContent = info.description || "";
 
-      // リスト反映
       const fillList = (id, arr) => {
         const ul = $(id);
         if (!ul) return;
