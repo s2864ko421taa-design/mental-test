@@ -1,42 +1,15 @@
-/* css/components.css */
-.topbar{
-  position:sticky;top:0;z-index:10;
-  background:linear-gradient(180deg,rgba(11,18,32,.98),rgba(11,18,32,.78));
-  backdrop-filter: blur(10px);
-  border-bottom:1px solid var(--line);
-  padding:12px;
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-}
-.topbar__left .title{font-size:18px;font-weight:800}
-.topbar__left .subtitle{font-size:12px;color:var(--muted);margin-top:4px}
-.topbar__right{display:flex;gap:10px;flex-wrap:wrap}
-.topbar__right--safe{padding-right:4px}
-
-.card{
-  background:linear-gradient(180deg,var(--card),var(--card2));
-  border:1px solid var(--line);
-  border-radius:var(--radius);
-  padding:14px;
-  margin-top:12px;
+/* progress */
+.progress{
+  height: 10px;
+  border-radius: 999px;
+  overflow: hidden;
+  background: rgba(255,255,255,.12);
 }
 
-.btn{
-  border:1px solid var(--line);
-  border-radius:14px;
-  padding:10px 14px;
-  background:transparent;
-  color:var(--text);
-  cursor:pointer;
+.progress__bar{
+  height: 100%;
+  width: 0%;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(88,181,242,1), rgba(155,200,255,1));
+  transition: width .2s ease;
 }
-.btn--primary{background:var(--accent);border-color:transparent}
-.btn--ghost{background:rgba(255,255,255,.04)}
-.badge{
-  display:inline-flex;align-items:center;justify-content:center;
-  padding:6px 10px;border-radius:999px;
-  background:rgba(255,255,255,.06);
-  border:1px solid var(--line);
-  font-size:12px;color:var(--text);
-}
-
-.progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px}
-.progress__bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
