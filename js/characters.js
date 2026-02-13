@@ -1,5 +1,6 @@
 // js/characters.js
-// 32タイプ = U/O, M/C, H/L, D/S, R/X の組み合わせ
+// 32タイプ（U/O, M/C, H/L, D/S, R/X の組み合わせ）
+// このファイルは type.html / characters.html 両方から使われます
 
 const AXES = [
   { key: "UO", left: "U", right: "O", nameL: "外側処理", nameR: "内側処理" },
@@ -12,16 +13,14 @@ const AXES = [
 export const allTypes = buildAllTypes();
 
 /**
- * code 例: "OMHSX"
- * 戻り値: 画面で使う情報一式
+ * code(例: "OMHSX") から表示用情報を作って返す
  */
 export function getTypeInfo(code) {
   if (!code || typeof code !== "string") return null;
-
   const c = code.toUpperCase().trim();
   if (c.length !== 5) return null;
 
-  // 文字チェック（U/O/M/C/H/L/D/S/R/X 以外なら null）
+  // 文字チェック（U/O M/C H/L D/S R/X）
   for (let i = 0; i < 5; i++) {
     const a = AXES[i];
     const ch = c[i];
@@ -37,9 +36,8 @@ export function getTypeInfo(code) {
   const group = buildGroup(c);
   const color = colorFromCode(c);
 
-  const shortLabel = buildShortLabel(c);
-  const name = buildCharacterName(c);
-
+  const label = buildJapaneseName(c);        // 日本語のキャラ名（短い）
+  const longName = buildLongJapaneseName(c); // もう少し説明っぽい日本語名
   const description = buildDescription(c);
 
   const strengths = buildStrengths(c);
@@ -48,12 +46,11 @@ export function getTypeInfo(code) {
 
   return {
     code: c,
-    name,        // ← 日本語キャラ名（追加）
     axesText,
-    group,       // { name: "..." }
-    color,
-    shortLabel,  // 1行キャッチ
-    label: shortLabel, // 既存UI互換
+    group,       // { name: "U×M" など }
+    color,       // カードの点の色
+    label,       // 例: 「アウト×モーフ×ハーモニー×セーブ×アクター」
+    longName,    // 例: 「外に出して整える / 場に合わせる / 関係温度を守る / 省エネ / 演技で運ぶ」
     description,
     strengths,
     cautions,
@@ -61,9 +58,12 @@ export function getTypeInfo(code) {
   };
 }
 
+/**
+ * 32コード生成
+ */
 function buildAllTypes() {
   const types = [];
-  // 0..31 のビットで左右を選ぶ（5軸）
+  // 0..31 のビットで左右を選ぶ
   for (let mask = 0; mask < 32; mask++) {
     let code = "";
     for (let i = 0; i < 5; i++) {
@@ -77,134 +77,175 @@ function buildAllTypes() {
   return types;
 }
 
-// グループ表示（一覧の "GROUP" をやめたいならここを好きに）
+/**
+ * 一覧のGROUPバッジ用（例: U×M / O×C）
+ */
 function buildGroup(code) {
   const uo = code[0] === "U" ? "外側処理" : "内側処理";
   const mc = code[1] === "M" ? "適応" : "非適応";
   return { name: `${uo}×${mc}` };
 }
 
-// 1行キャッチ（カード下の短文）
-function buildShortLabel(code) {
+/**
+ * 日本語の短いキャラ名（あなたが言ってた「ローマ字だけ」問題の解決用）
+ * ここは自由に改名してOK
+ */
+function buildJapaneseName(code) {
   const map = {
-    U: "外に出して整える",
-    O: "内で噛んで整える",
-    M: "場に合わせて変形",
-    C: "芯を優先して固定",
-    H: "関係の温度を守る",
-    L: "正しさで舵を切る",
-    D: "短期で燃えやすい",
-    S: "省エネで続ける",
-    R: "素を出しやすい",
-    X: "演じ分けが得意",
+    U: "アウト",
+    O: "イン",
+    M: "モーフ",
+    C: "コア",
+    H: "ハーモニー",
+    L: "ロジック",
+    D: "ドレイン",
+    S: "セーブ",
+    R: "リアル",
+    X: "アクター",
   };
-  return `${map[code[0]]} / ${map[code[1]]} / ${map[code[2]]}`;
-}
-
-// ✅ 日本語の「キャラ名」生成（ここを好きにカスタムしてOK）
-function buildCharacterName(code) {
-  const map = {
-    U: "アウト", O: "イン",
-    M: "モーフ", C: "コア",
-    H: "ハーモ", L: "ロジック",
-    D: "ドレイン", S: "セーブ",
-    R: "リアル", X: "アクター",
-  };
-  // 例: OMHSX → イン×モーフ×ハーモ×セーブ×アクター
   return `${map[code[0]]}×${map[code[1]]}×${map[code[2]]}×${map[code[3]]}×${map[code[4]]}`;
 }
 
-function buildDescription(code) {
+/**
+ * もう少し意味が分かる日本語名（サブで表示したい用）
+ */
+function buildLongJapaneseName(code) {
   const uo =
     code[0] === "U"
-      ? "外側処理（Outer processing）寄りで、感情や思考を「出しながら」整理しやすい。"
-      : "内側処理（Inner processing）寄りで、感情や思考を「内で噛んで」整理しやすい。";
+      ? "外に出して整える"
+      : "内で噛み砕いて整える";
 
   const mc =
     code[1] === "M"
-      ? "環境への姿勢は適応（Morph）。場に合わせて型を変えられる。"
-      : "環境への姿勢は非適応（Core）。自分の軸を崩しにくい。";
+      ? "場に合わせて変形する"
+      : "自分の軸を守って動く";
 
   const hl =
     code[2] === "H"
-      ? "対人スタンスは調和（Harmony）。関係の温度を一定に保ちやすい。"
-      : "対人スタンスはコントロール（Logic/Control）。筋道と境界を優先しやすい。";
+      ? "関係温度を守りやすい"
+      : "筋を通して整えやすい";
 
   const ds =
     code[3] === "D"
-      ? "疲れ方は消耗（Drain）寄り。短期で出力が上がるが、燃え尽きやすい。"
-      : "疲れ方は節約（Save）寄り。省エネ設計で、継続に強い。";
+      ? "短期で燃えやすい"
+      : "省エネで長期向き";
 
   const rx =
     code[4] === "X"
-      ? "見せ方は演技（X-face）寄り。場面ごとに表現を使い分けられる。"
-      : "見せ方は本音（Real）寄り。素が伝わりやすい。";
+      ? "演技で運ぶのが得意"
+      : "素で勝負しやすい";
+
+  return `${uo} / ${mc} / ${hl} / ${ds} / ${rx}`;
+}
+
+/**
+ * 説明文（タイプ詳細の上段）
+ */
+function buildDescription(code) {
+  const uo =
+    code[0] === "U"
+      ? "あなたは「外側処理（Outer processing）」寄り。話す・書く・動くことで感情や考えを整理しやすい。"
+      : "あなたは「内側処理（Inner processing）」寄り。頭の中で噛み砕き、納得してから言語化しやすい。";
+
+  const mc =
+    code[1] === "M"
+      ? "環境への姿勢は「適応型（Morph）」。場の空気・相手のテンポに合わせて形を変えられる。"
+      : "環境への姿勢は「非適応型（Core）」。自分の基準を崩しにくく、納得できない変化に抵抗しやすい。";
+
+  const hl =
+    code[2] === "H"
+      ? "対人スタンスは「調和重視（Harmony）」。関係の摩擦を減らし、温度感を守ろうとする。"
+      : "対人スタンスは「コントロール重視（Logic/Control）」。筋・ルール・再現性を優先しやすい。";
+
+  const ds =
+    code[3] === "D"
+      ? "疲れ方は「消耗（Drain）」寄り。短期で全力を出せるが、燃え尽きやすい。"
+      : "疲れ方は「節約（Save）」寄り。回復を前提に設計でき、継続に強い。";
+
+  const rx =
+    code[4] === "X"
+      ? "見せ方は「演技（X-face）」寄り。場面に合わせて見せ方を調整し、交渉や立ち回りが強い。"
+      : "見せ方は「本音（Real）」寄り。飾らずに出せるが、場の要求とズレると浮きやすい。";
 
   return `${uo} ${mc} ${hl} ${ds} ${rx}`;
 }
 
+/**
+ * 強み（箇条書き）
+ */
 function buildStrengths(code) {
   const s = [];
+
   if (code[0] === "U") s.push("外に出して処理できる（回復が速く、抱え込みにくい）");
-  else s.push("内で処理できる（感情が深く、ブレにくい）");
+  else s.push("内で精密に処理できる（判断が深く、ブレにくい）");
 
   if (code[1] === "M") s.push("場に合わせて変形できる（適応が早い）");
-  else s.push("軸が強い（ブレずに信頼を積む）");
+  else s.push("軸で動ける（芯が強く、ブレにくい）");
 
   if (code[2] === "H") s.push("関係の温度を守れる（対人摩擦を減らせる）");
-  else s.push("判断が速い（迷いを減らして前に進める）");
+  else s.push("筋を通せる（判断が明確で、整理が上手い）");
 
   if (code[3] === "S") s.push("消耗を抑える設計ができる（継続が強い）");
-  else s.push("短期決戦に強い（瞬間最大火力が出る）");
+  else s.push("短期で爆発できる（瞬間火力が高い）");
 
   if (code[4] === "X") s.push("場面対応が上手い（交渉・立ち回りが強い）");
-  else s.push("素が伝わる（信頼・親密が育ちやすい）");
+  else s.push("言葉の純度が高い（信頼が取りやすい）");
 
   return s;
 }
 
+/**
+ * 弱点・事故ポイント（箇条書き）
+ */
 function buildCautions(code) {
   const c = [];
-  if (code[0] === "U") c.push("言いながら整理する分、勢いで言い過ぎることがある");
-  else c.push("内に溜めすぎて、共有が遅れて誤解されることがある");
 
-  if (code[1] === "M") c.push("合わせすぎて“本音”が見えにくいと言われがち");
-  else c.push("こだわりが強すぎて、柔軟性が落ちるときがある");
+  if (code[0] === "U") c.push("言いながら整える分、勢いが強く見えることがある");
+  else c.push("内で抱えすぎて、共有が遅れて誤解されることがある");
 
-  if (code[2] === "H") c.push("衝突回避で言うべきことを飲み込むことがある");
-  else c.push("正論が強く出て、相手の感情を置き去りにすることがある");
+  if (code[1] === "M") c.push("合わせすぎて「本音が見えない」と言われがち");
+  else c.push("こだわりが強く見えて、融通が利かないと思われがち");
+
+  if (code[2] === "H") c.push("優先順位が関係寄りで、我慢を溜めやすい");
+  else c.push("正論が強く、温度差で相手が萎えることがある");
 
   if (code[3] === "D") c.push("無理して走ると一気に燃え尽きる");
-  else c.push("省エネ過ぎてチャンスを逃すことがある");
+  else c.push("安全運転すぎてチャンスを逃すことがある");
 
-  if (code[4] === "X") c.push("演じ過ぎると自分の感覚が鈍る");
-  else c.push("素が出すぎて、場に合わず損をすることがある");
+  if (code[4] === "X") c.push("演じすぎると「自分が何者か」見失いやすい");
+  else c.push("素が強すぎて、場によっては誤解されやすい");
 
   return c;
 }
 
+/**
+ * おすすめ行動（箇条書き）
+ */
 function buildTips(code) {
   const t = [];
-  if (code[0] === "U") t.push("話す前に「結論→理由→例」の順で短く出す");
-  else t.push("内省が長い時は“要点だけ”先に共有する");
 
-  if (code[1] === "M") t.push("合わせた後に「自分の希望」を1つ足す");
-  else t.push("譲れない軸と、譲れる部分を分けて言語化する");
+  if (code[0] === "U") t.push("話す/書くで整理する時間を意図的に作る（メモ・独り言・通話）");
+  else t.push("内省→要点だけ共有の型を作る（結論→理由→要望の順）");
 
-  if (code[2] === "H") t.push("衝突回避より“期待値調整”を優先する");
-  else t.push("正しさの前に「相手の気持ち」を1行添える");
+  if (code[1] === "M") t.push("合わせた後に「自分の希望」を1つ戻す癖をつける");
+  else t.push("譲れない軸と、譲っていい軸を先に分けておく");
 
-  if (code[3] === "D") t.push("短期で燃やすなら、回復日（オフ）を先に確保");
-  else t.push("省エネでも、週1だけ“攻める日”を作る");
+  if (code[2] === "H") t.push("優しさの前に境界線（NOの言い方テンプレ）を持つ");
+  else t.push("正しさの前に共感を1行入れる（相手の感情のラベル付け）");
 
-  if (code[4] === "X") t.push("演じる量を決める（何割が素か）");
-  else t.push("素を出す前に“場のゴール”を確認する");
+  if (code[3] === "D") t.push("短期集中→回復をセットにする（休む時間を先に確保）");
+  else t.push("省エネでも進むタスクに分解して、毎日少しずつ進める");
+
+  if (code[4] === "X") t.push("演じる場と素を出す場を分ける（回復用コミュニティを作る）");
+  else t.push("素の強さを「言い方」で調整する（柔らかい導入→本題）");
 
   return t;
 }
 
+/**
+ * コードから安定した色を作る（CSS不要）
+ */
 function colorFromCode(code) {
-  // 安定色（CSS不要で動く）
   let h = 0;
   for (let i = 0; i < code.length; i++) {
     h = (h * 31 + code.charCodeAt(i)) >>> 0;
