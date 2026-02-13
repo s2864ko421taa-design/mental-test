@@ -1,12 +1,48 @@
 // js/stats.js
-const KEY = "mental_test_stats_v1";
+const KEY = "your_stats_key";
 
-export function getStats() {
+// axis: { UO:{percentMain...}, MC:{...}, HL:{...}, DS:{...}, RX:{...} } を想定
+export function recordResult(code, axis) {
+  const data = loadStats();
+
+  data.count += 1;
+
+  // タイプ別出現回数
+  data.codes[code] = (data.codes[code] || 0) + 1;
+
+  // 軸の平均（percentMain を平均化）
+  const axes = ["UO", "MC", "HL", "DS", "RX"];
+  for (const k of axes) {
+    const v = axis?.[k]?.percentMain;
+    if (typeof v === "number" && !Number.isNaN(v)) {
+      const prev = data.avg[k];
+      // 逐次平均: newAvg = oldAvg + (x-oldAvg)/n
+      data.avg[k] = prev + (v - prev) / data.count;
+    }
+  }
+
+  saveStats(data);
+  return data;
+}
+
+export function loadStats() {
   try {
     const raw = localStorage.getItem(KEY);
-    return raw ? JSON.parse(raw) : null;
+    if (!raw) return initStats();
+    const parsed = JSON.parse(raw);
+
+    // 最低限の形を保証
+    if (!parsed || typeof parsed !== "object") return initStats();
+    if (typeof parsed.count !== "number") parsed.count = 0;
+    if (!parsed.codes || typeof parsed.codes !== "object") parsed.codes = {};
+    if (!parsed.avg || typeof parsed.avg !== "object") parsed.avg = initStats().avg;
+
+    for (const k of ["UO", "MC", "HL", "DS", "RX"]) {
+      if (typeof parsed.avg[k] !== "number") parsed.avg[k] = 0;
+    }
+    return parsed;
   } catch {
-    return null;
+    return initStats();
   }
 }
 
@@ -14,60 +50,14 @@ export function resetStats() {
   localStorage.removeItem(KEY);
 }
 
-export function recordResult(code, axis) {
-  // axis: calculateResult の戻り（UO/MC/HL/DS/RX）
-  const now = Date.now();
-  const next = getStats() ?? {
+function saveStats(obj) {
+  localStorage.setItem(KEY, JSON.stringify(obj));
+}
+
+function initStats() {
+  return {
     count: 0,
-    last: null,
-    avg: {
-      UO: { pL: 50, pR: 50 },
-      MC: { pL: 50, pR: 50 },
-      HL: { pL: 50, pR: 50 },
-      DS: { pL: 50, pR: 50 },
-      RX: { pL: 50, pR: 50 },
-    },
-    history: [],
+    codes: {},
+    avg: { UO: 0, MC: 0, HL: 0, DS: 0, RX: 0 },
   };
-
-  next.count += 1;
-  next.last = { code, at: now };
-
-  // 平均更新（left/right % を平均する）
-  for (const k of ["UO","MC","HL","DS","RX"]) {
-    const prev = next.avg[k];
-    const curL = Number(axis?.[k]?.pL ?? 50);
-    const curR = Number(axis?.[k]?.pR ?? 50);
-
-    prev.pL = round1(((prev.pL * (next.count - 1)) + curL) / next.count);
-    prev.pR = round1(((prev.pR * (next.count - 1)) + curR) / next.count);
-  }
-
-  // 履歴は重いなら切ってOK（ここは最新50件に制限）
-  next.history.unshift({
-    code,
-    at: now,
-    axis: pickAxis(axis),
-  });
-  next.history = next.history.slice(0, 50);
-
-  localStorage.setItem(KEY, JSON.stringify(next));
-  return next;
 }
-
-function pickAxis(axis) {
-  const out = {};
-  for (const k of ["UO","MC","HL","DS","RX"]) {
-    out[k] = {
-      main: axis?.[k]?.main,
-      alt: axis?.[k]?.alt,
-      pL: axis?.[k]?.pL,
-      pR: axis?.[k]?.pR,
-      percentMain: axis?.[k]?.percentMain,
-      percentAlt: axis?.[k]?.percentAlt,
-    };
-  }
-  return out;
-}
-
-function round1(x){ return Math.round(x * 10) / 10; }
