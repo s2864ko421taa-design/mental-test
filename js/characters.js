@@ -46,11 +46,19 @@ export function getTypeInfo(code) {
 
   return {
     code: c,
-    axesText,
-    group,       // { name: "U×M" など }
-    color,       // カードの点の色
-    label,       // 例: 「アウト×モーフ×ハーモニー×セーブ×アクター」
-    longName,    // 例: 「外に出して整える / 場に合わせる / 関係温度を守る / 省エネ / 演技で運ぶ」
+
+    // ✅ 一覧で使う
+    group,     // { name: "外側処理×適応" など }
+    color,     // ドット色
+    axesText,  // "U:外側処理 / M:適応 ..."
+
+    // ✅ “名前がない”問題の本丸：name を必ず返す
+    // characters.html / type.html が info.name を参照してもOKになる
+    name: label,       // ←これが超重要（今まで無かった）
+    label,             // 互換のため残す
+    longName,          // サブ表示用
+
+    // ✅ 詳細で使う
     description,
     strengths,
     cautions,
@@ -63,7 +71,6 @@ export function getTypeInfo(code) {
  */
 function buildAllTypes() {
   const types = [];
-  // 0..31 のビットで左右を選ぶ
   for (let mask = 0; mask < 32; mask++) {
     let code = "";
     for (let i = 0; i < 5; i++) {
@@ -78,7 +85,7 @@ function buildAllTypes() {
 }
 
 /**
- * 一覧のGROUPバッジ用（例: U×M / O×C）
+ * 一覧のGROUPバッジ用（例: 外側処理×適応）
  */
 function buildGroup(code) {
   const uo = code[0] === "U" ? "外側処理" : "内側処理";
@@ -87,8 +94,7 @@ function buildGroup(code) {
 }
 
 /**
- * 日本語の短いキャラ名（あなたが言ってた「ローマ字だけ」問題の解決用）
- * ここは自由に改名してOK
+ * 日本語の短いキャラ名
  */
 function buildJapaneseName(code) {
   const map = {
@@ -107,34 +113,14 @@ function buildJapaneseName(code) {
 }
 
 /**
- * もう少し意味が分かる日本語名（サブで表示したい用）
+ * もう少し意味が分かる日本語名（サブ表示）
  */
 function buildLongJapaneseName(code) {
-  const uo =
-    code[0] === "U"
-      ? "外に出して整える"
-      : "内で噛み砕いて整える";
-
-  const mc =
-    code[1] === "M"
-      ? "場に合わせて変形する"
-      : "自分の軸を守って動く";
-
-  const hl =
-    code[2] === "H"
-      ? "関係温度を守りやすい"
-      : "筋を通して整えやすい";
-
-  const ds =
-    code[3] === "D"
-      ? "短期で燃えやすい"
-      : "省エネで長期向き";
-
-  const rx =
-    code[4] === "X"
-      ? "演技で運ぶのが得意"
-      : "素で勝負しやすい";
-
+  const uo = code[0] === "U" ? "外に出して整える" : "内で噛み砕いて整える";
+  const mc = code[1] === "M" ? "場に合わせて変形する" : "自分の軸を守って動く";
+  const hl = code[2] === "H" ? "関係温度を守りやすい" : "筋を通して整えやすい";
+  const ds = code[3] === "D" ? "短期で燃えやすい" : "省エネで長期向き";
+  const rx = code[4] === "X" ? "演技で運ぶのが得意" : "素で勝負しやすい";
   return `${uo} / ${mc} / ${hl} / ${ds} / ${rx}`;
 }
 
@@ -171,11 +157,10 @@ function buildDescription(code) {
 }
 
 /**
- * 強み（箇条書き）
+ * 強み
  */
 function buildStrengths(code) {
   const s = [];
-
   if (code[0] === "U") s.push("外に出して処理できる（回復が速く、抱え込みにくい）");
   else s.push("内で精密に処理できる（判断が深く、ブレにくい）");
 
@@ -195,11 +180,10 @@ function buildStrengths(code) {
 }
 
 /**
- * 弱点・事故ポイント（箇条書き）
+ * 弱点・事故ポイント
  */
 function buildCautions(code) {
   const c = [];
-
   if (code[0] === "U") c.push("言いながら整える分、勢いが強く見えることがある");
   else c.push("内で抱えすぎて、共有が遅れて誤解されることがある");
 
@@ -219,11 +203,10 @@ function buildCautions(code) {
 }
 
 /**
- * おすすめ行動（箇条書き）
+ * おすすめ行動
  */
 function buildTips(code) {
   const t = [];
-
   if (code[0] === "U") t.push("話す/書くで整理する時間を意図的に作る（メモ・独り言・通話）");
   else t.push("内省→要点だけ共有の型を作る（結論→理由→要望の順）");
 
@@ -243,13 +226,11 @@ function buildTips(code) {
 }
 
 /**
- * コードから安定した色を作る（CSS不要）
+ * コードから安定した色を作る
  */
 function colorFromCode(code) {
   let h = 0;
-  for (let i = 0; i < code.length; i++) {
-    h = (h * 31 + code.charCodeAt(i)) >>> 0;
-  }
+  for (let i = 0; i < code.length; i++) h = (h * 31 + code.charCodeAt(i)) >>> 0;
   const hue = h % 360;
   return `hsl(${hue} 70% 60%)`;
 }
