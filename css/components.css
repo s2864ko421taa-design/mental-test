@@ -1,91 +1,42 @@
-/* ================================
-   タイプカード & 共通UIスタイル
-================================ */
-
-.grid{
-  display:grid;
-  grid-template-columns:repeat(auto-fill,minmax(160px,1fr));
-  gap:16px;
-  margin-top:20px;
+/* css/components.css */
+.topbar{
+  position:sticky;top:0;z-index:10;
+  background:linear-gradient(180deg,rgba(11,18,32,.98),rgba(11,18,32,.78));
+  backdrop-filter: blur(10px);
+  border-bottom:1px solid var(--line);
+  padding:12px;
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
 }
+.topbar__left .title{font-size:18px;font-weight:800}
+.topbar__left .subtitle{font-size:12px;color:var(--muted);margin-top:4px}
+.topbar__right{display:flex;gap:10px;flex-wrap:wrap}
+.topbar__right--safe{padding-right:4px}
 
-.tile{
-  background:rgba(255,255,255,0.05);
-  border-radius:14px;
-  padding:16px;
-  transition:0.2s ease;
-  border:1px solid rgba(255,255,255,0.08);
-}
-
-.tile:hover{
-  transform:translateY(-4px);
-  background:rgba(255,255,255,0.08);
-}
-
-.tileTop{
-  display:flex;
-  justify-content:space-between;
-  align-items:center;
-  margin-bottom:12px;
-}
-
-.tag{
-  font-size:12px;
-  padding:5px 10px;
-  border-radius:999px;
-  background:rgba(255,255,255,0.1);
-  font-weight:600;
-}
-
-.colorDot{
-  width:12px;
-  height:12px;
-  border-radius:50%;
-  box-shadow:0 0 8px rgba(0,0,0,0.4);
-}
-
-.tileTitle{
-  font-size:18px;
-  font-weight:700;
-  margin-bottom:6px;
-}
-
-.tileSub{
-  font-size:12px;
-  opacity:0.75;
-  line-height:1.4;
-}
-/* === type/characters の右上ボタン崩れ対策 === */
-.topbar__right--safe{
-  display:flex;
-  gap:10px;
-  align-items:center;
-  flex-wrap:wrap;          /* 端末幅が狭い時に綺麗に折り返す */
-  justify-content:flex-end;
+.card{
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid var(--line);
+  border-radius:var(--radius);
+  padding:14px;
+  margin-top:12px;
 }
 
 .btn{
-  white-space:nowrap;      /* ボタン文字が変に縦割れしない */
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px 14px;
+  background:transparent;
+  color:var(--text);
+  cursor:pointer;
 }
-
-/* badge（type.htmlのGROUP） */
+.btn--primary{background:var(--accent);border-color:transparent}
+.btn--ghost{background:rgba(255,255,255,.04)}
 .badge{
-  display:inline-flex;
-  align-items:center;
-  gap:8px;
-  padding:8px 12px;
-  border:1px solid rgba(255,255,255,.18);
-  border-radius:999px;
-  font-size:12px;
-  letter-spacing:.08em;
+  display:inline-flex;align-items:center;justify-content:center;
+  padding:6px 10px;border-radius:999px;
+  background:rgba(255,255,255,.06);
+  border:1px solid var(--line);
+  font-size:12px;color:var(--text);
 }
 
-/* list見た目（強み/弱点/おすすめ） */
-.list{
-  margin-top:10px;
-  padding-left:18px;
-  line-height:1.7;
-}
-.list li{
-  margin:6px 0;
-}
+.progress{height:10px;border-radius:999px;background:rgba(255,255,255,.08);overflow:hidden;margin-top:10px}
+.progress__bar{height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--accent2))}
