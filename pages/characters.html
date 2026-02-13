@@ -70,7 +70,7 @@
       title.style.fontSize = "22px";
       title.style.fontWeight = "900";
       title.style.marginTop = "10px";
-      title.textContent = info?.code ?? t;
+      title.textContent = `${info?.code ?? t} - ${info?.name ?? ""}`;
 
       const sub = document.createElement("div");
       sub.className = "muted";
