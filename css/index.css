@@ -1,19 +1,18 @@
-.tile.blue {
-  border: 2px solid #4f7cff;
-  background: linear-gradient(145deg, #1f2b50, #243a78);
+/* css/index.css */
+.qText{font-size:18px;line-height:1.55;margin-top:10px}
+.choices{display:grid;gap:10px;margin-top:12px}
+.choice{
+  text-align:left;
+  padding:12px 14px;
+  border-radius:16px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
 }
-
-.tile.red {
-  border: 2px solid #ff5a5a;
-  background: linear-gradient(145deg, #4a1f1f, #7a2424);
+.choice.isSelected{
+  border-color:rgba(124,140,255,.9);
+  background:rgba(124,140,255,.12);
 }
-
-.tile.green {
-  border: 2px solid #38d39f;
-  background: linear-gradient(145deg, #1f4a3a, #1f7a56);
-}
-
-.tile.purple {
-  border: 2px solid #a76bff;
-  background: linear-gradient(145deg, #2e1f4a, #4a2f7a);
-}
+.resultHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+.resultTitle{font-size:13px;color:var(--muted);margin-bottom:6px}
+.resultType{font-size:36px;font-weight:900;letter-spacing:1px}
+.resultBadgeWrap{display:flex;align-items:center;gap:10px}
