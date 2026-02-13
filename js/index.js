@@ -1,4 +1,4 @@
-// /js/index.js
+// js/index.js
 import { QUESTIONS } from "./questions.js";
 import { loadState, saveState, resetState } from "./storage.js";
 import { calculateResult, buildCode } from "./scoring.js";
@@ -30,7 +30,7 @@ function ensureState() {
   }
 
   const fresh = { answers: Array(QUESTIONS.length).fill(null), current: 0 };
-  saveState(fresh);
+  saveState?.(fresh);
   return fresh;
 }
 
@@ -77,9 +77,11 @@ function showQuestion(state) {
 
   const btnPrev = $("btnPrev");
   const btnNext = $("btnNext");
+
   if (btnPrev) btnPrev.disabled = i <= 0;
   if (btnNext) btnNext.disabled = state.answers[i] == null;
 
+  // 結果カードは質問中は隠す
   const resultCard = $("resultCard");
   if (resultCard) resultCard.classList.add("hidden");
 }
@@ -110,12 +112,12 @@ function goPrev(state) {
 function gaugeRow(left, pLeft, right, pRight) {
   return `
     <div style="margin:14px 0;">
-      <div style="display:flex; justify-content:space-between; font-size:13px; margin-bottom:6px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:6px;">
         <div><b>${left}</b> (${pLeft}%)</div>
-        <div>${right} (${pRight}%)</div>
+        <div><b>${right}</b> (${pRight}%)</div>
       </div>
-      <div style="height:10px; background:rgba(255,255,255,.12); border-radius:999px; overflow:hidden;">
-        <div style="height:100%; width:${pLeft}%; background:linear-gradient(90deg, rgba(88,181,242,1), rgba(155,200,255,1));"></div>
+      <div style="height:10px;background:rgba(255,255,255,.12);border-radius:999px;overflow:hidden;">
+        <div style="height:100%;width:${pLeft}%;background:linear-gradient(90deg, rgba(88,181,242,1), rgba(138,208,255,1));"></div>
       </div>
     </div>
   `;
@@ -125,8 +127,7 @@ function renderResult(state) {
   const axis = calculateResult(state.answers, QUESTIONS);
   const code = buildCode(axis);
 
-  // ✅ 記録はここ（結果が確定した瞬間）
-  // 同じ結果画面表示で二重カウントしないようガード
+  // ✅ 記録（同じ結果表示で二重記録しない）
   try {
     const onceKey = `recorded:${code}`;
     if (!sessionStorage.getItem(onceKey)) {
@@ -150,7 +151,7 @@ function renderResult(state) {
   if (resultDesc) resultDesc.textContent = "タイプ詳細ページで、強み・弱点・おすすめ行動が見れます。";
   if (btnDetail) btnDetail.href = `./pages/type.html?t=${encodeURIComponent(code)}`;
 
-  // ゲージ差し込み（既存があれば差し替え）
+  // 既存ゲージがあれば入れ替え
   const old = document.getElementById("resultGauges");
   if (old) old.remove();
 
@@ -159,19 +160,21 @@ function renderResult(state) {
   wrap.className = "card";
   wrap.style.marginTop = "12px";
 
+  // axis のプロパティ名は scoring.js に合わせる（あなたの現状に合わせて UO/MC/HL/DS/RX を採用）
   wrap.innerHTML = `
     <div class="title">バランス（%）</div>
     <div class="muted">あなたの回答から算出した各軸の割合です</div>
-    ${gaugeRow("U", axis.UO?.pL ?? 0, "O", axis.UO?.pR ?? 0)}
-    ${gaugeRow("M", axis.MC?.pL ?? 0, "C", axis.MC?.pR ?? 0)}
-    ${gaugeRow("H", axis.HL?.pL ?? 0, "L", axis.HL?.pR ?? 0)}
-    ${gaugeRow("D", axis.DS?.pL ?? 0, "S", axis.DS?.pR ?? 0)}
-    ${gaugeRow("R", axis.RX?.pL ?? 0, "X", axis.RX?.pR ?? 0)}
+    ${gaugeRow("U", axis.UO?.pL ?? 50, "O", axis.UO?.pR ?? 50)}
+    ${gaugeRow("M", axis.MC?.pL ?? 50, "C", axis.MC?.pR ?? 50)}
+    ${gaugeRow("H", axis.HL?.pL ?? 50, "L", axis.HL?.pR ?? 50)}
+    ${gaugeRow("D", axis.DS?.pL ?? 50, "S", axis.DS?.pR ?? 50)}
+    ${gaugeRow("R", axis.RX?.pL ?? 50, "X", axis.RX?.pR ?? 50)}
   `;
 
   resultCard.classList.remove("hidden");
   resultCard.after(wrap);
 
+  // 結果後は次へ無効化
   const btnNext = $("btnNext");
   if (btnNext) btnNext.disabled = true;
 
@@ -182,6 +185,7 @@ function renderResult(state) {
 export function init() {
   const state = ensureState();
 
+  // 途中再開：最初の未回答へ
   const firstUnanswered = state.answers.findIndex((v) => v == null);
   state.current = firstUnanswered >= 0 ? firstUnanswered : QUESTIONS.length - 1;
   saveState(state);
@@ -199,11 +203,14 @@ export function init() {
 
       state.answers[state.current] = v;
       saveState(state);
+
       updateProgressUI(state);
 
+      // 次へ有効化
       const btnNext = $("btnNext");
       if (btnNext) btnNext.disabled = false;
 
+      // 自動で次へ（最後は結果）
       if (answeredCount(state.answers) >= QUESTIONS.length) renderResult(state);
       else goNext(state);
     });
@@ -213,11 +220,12 @@ export function init() {
   $("btnNext")?.addEventListener("click", () => goNext(state));
 
   $("btnRestart")?.addEventListener("click", () => {
-    resetState();
-    sessionStorage.clear(); // 二重記録ガードもリセット
+    resetState?.();
+    try { sessionStorage.clear(); } catch {}
     location.reload();
   });
 
+  // 初期表示
   if (answeredCount(state.answers) >= QUESTIONS.length) renderResult(state);
   else showQuestion(state);
 }
