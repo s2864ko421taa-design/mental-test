@@ -1,63 +1,39 @@
-// js/stats.js
+// /js/stats.js
 const KEY = "your_stats_key";
 
-// axis: { UO:{percentMain...}, MC:{...}, HL:{...}, DS:{...}, RX:{...} } を想定
 export function recordResult(code, axis) {
-  const data = loadStats();
+  const raw = localStorage.getItem(KEY);
+  const data = raw ? JSON.parse(raw) : { total: 0, byCode: {} };
 
-  data.count += 1;
-
-  // タイプ別出現回数
-  data.codes[code] = (data.codes[code] || 0) + 1;
-
-  // 軸の平均（percentMain を平均化）
-  const axes = ["UO", "MC", "HL", "DS", "RX"];
-  for (const k of axes) {
-    const v = axis?.[k]?.percentMain;
-    if (typeof v === "number" && !Number.isNaN(v)) {
-      const prev = data.avg[k];
-      // 逐次平均: newAvg = oldAvg + (x-oldAvg)/n
-      data.avg[k] = prev + (v - prev) / data.count;
-    }
+  if (!data.byCode[code]) {
+    data.byCode[code] = {
+      count: 0,
+      sum: { UO: 0, MC: 0, HL: 0, DS: 0, RX: 0 }, // pL の合計（平均取りやすい）
+    };
   }
 
-  saveStats(data);
-  return data;
+  const item = data.byCode[code];
+  item.count += 1;
+  data.total += 1;
+
+  // pL を代表値として加算（必要なら pR も別で持てる）
+  item.sum.UO += axis?.UO?.pL ?? 0;
+  item.sum.MC += axis?.MC?.pL ?? 0;
+  item.sum.HL += axis?.HL?.pL ?? 0;
+  item.sum.DS += axis?.DS?.pL ?? 0;
+  item.sum.RX += axis?.RX?.pL ?? 0;
+
+  localStorage.setItem(KEY, JSON.stringify(data));
+
+  // ✅「記録できてるか確認」
+  console.log("stats:", localStorage.getItem(KEY));
 }
 
-export function loadStats() {
-  try {
-    const raw = localStorage.getItem(KEY);
-    if (!raw) return initStats();
-    const parsed = JSON.parse(raw);
-
-    // 最低限の形を保証
-    if (!parsed || typeof parsed !== "object") return initStats();
-    if (typeof parsed.count !== "number") parsed.count = 0;
-    if (!parsed.codes || typeof parsed.codes !== "object") parsed.codes = {};
-    if (!parsed.avg || typeof parsed.avg !== "object") parsed.avg = initStats().avg;
-
-    for (const k of ["UO", "MC", "HL", "DS", "RX"]) {
-      if (typeof parsed.avg[k] !== "number") parsed.avg[k] = 0;
-    }
-    return parsed;
-  } catch {
-    return initStats();
-  }
+export function getStats() {
+  const raw = localStorage.getItem(KEY);
+  return raw ? JSON.parse(raw) : null;
 }
 
-export function resetStats() {
+export function clearStats() {
   localStorage.removeItem(KEY);
-}
-
-function saveStats(obj) {
-  localStorage.setItem(KEY, JSON.stringify(obj));
-}
-
-function initStats() {
-  return {
-    count: 0,
-    codes: {},
-    avg: { UO: 0, MC: 0, HL: 0, DS: 0, RX: 0 },
-  };
 }
