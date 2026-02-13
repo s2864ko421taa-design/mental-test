@@ -19,14 +19,15 @@
       <div class="title">タイプ一覧</div>
       <div class="subtitle">32タイプ（U/O・M/C・H/L・D/S・R/X）</div>
     </div>
-    <div class="topbar__right">
+
+    <div class="topbar__right topbar__right--safe">
       <a class="btn btn--ghost" href="../index.html">診断へ戻る</a>
     </div>
   </header>
 
   <main class="wrap">
     <div class="card">
-      <div class="muted">カードをタップすると詳細へ移動します（例：type.html?t=UMHDR）。</div>
+      <div class="muted">カードをタップすると詳細へ移動します（例: type.html?t=OMHSX）。</div>
     </div>
 
     <div class="grid" id="grid"></div>
@@ -37,44 +38,59 @@
 
     const grid = document.getElementById("grid");
 
-    for(const t of allTypes()){
+    function card(t) {
       const info = getTypeInfo(t);
 
       const a = document.createElement("a");
       a.href = `./type.html?t=${encodeURIComponent(t)}`;
-
-      const tile = document.createElement("div");
-      tile.className = "tile";
+      a.className = "card";
+      a.style.display = "block";
 
       const top = document.createElement("div");
-      top.className = "tileTop";
+      top.style.display = "flex";
+      top.style.alignItems = "center";
+      top.style.justifyContent = "space-between";
+      top.style.gap = "10px";
 
       const tag = document.createElement("div");
-      tag.className = "tag";
-      tag.textContent = info.group.name;
+      tag.className = "badge";
+      tag.textContent = info?.group?.name ?? "GROUP";
 
       const dot = document.createElement("div");
-      dot.className = "colorDot";
-      dot.style.background = info.color;
+      dot.style.width = "12px";
+      dot.style.height = "12px";
+      dot.style.borderRadius = "999px";
+      dot.style.background = info?.color ?? "rgba(255,255,255,.35)";
+      dot.style.border = "1px solid rgba(255,255,255,.18)";
 
       top.appendChild(tag);
       top.appendChild(dot);
 
       const title = document.createElement("div");
-      title.className = "tileTitle";
-      title.textContent = info.code;
+      title.style.fontSize = "22px";
+      title.style.fontWeight = "900";
+      title.style.marginTop = "10px";
+      title.textContent = info?.code ?? t;
 
       const sub = document.createElement("div");
-      sub.className = "tileSub";
-      sub.textContent = info.axesText;
+      sub.className = "muted";
+      sub.style.marginTop = "6px";
+      sub.textContent = info?.axesText ?? "";
 
-      tile.appendChild(top);
-      tile.appendChild(title);
-      tile.appendChild(sub);
+      a.appendChild(top);
+      a.appendChild(title);
+      a.appendChild(sub);
 
-      a.appendChild(tile);
-      grid.appendChild(a);
+      return a;
     }
+
+    // grid style
+    grid.style.display = "grid";
+    grid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+    grid.style.gap = "12px";
+    grid.style.marginTop = "12px";
+
+    for (const t of allTypes) grid.appendChild(card(t));
   </script>
 </body>
 </html>
