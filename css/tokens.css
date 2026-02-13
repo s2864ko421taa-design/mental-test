@@ -1,0 +1,37 @@
+/* css/tokens.css : デザイン共通トークン */
+
+:root{
+  /* spacing */
+  --s-2: 6px;
+  --s-3: 10px;
+  --s-4: 14px;
+  --s-5: 18px;
+  --s-6: 24px;
+
+  /* radius */
+  --r-2: 10px;
+  --r-3: 14px;
+  --r-4: 18px;
+
+  /* typography */
+  --fs-0: 12px;
+  --fs-1: 14px;
+  --fs-2: 16px;
+  --fs-3: 18px;
+  --fs-4: 22px;
+  --fs-5: 28px;
+
+  /* colors */
+  --bg: #0a1020;
+  --panel: rgba(255,255,255,.06);
+  --panel-2: rgba(255,255,255,.08);
+  --border: rgba(255,255,255,.10);
+  --text: rgba(255,255,255,.92);
+  --muted: rgba(255,255,255,.65);
+
+  --primary: #6a74ff;
+  --primary-2: #8aa0ff;
+
+  /* shadows */
+  --shadow: 0 10px 30px rgba(0,0,0,.35);
+}
