@@ -19,7 +19,6 @@
       <div class="title">タイプ一覧</div>
       <div class="subtitle">32タイプ（U/O・M/C・H/L・D/S・R/X）</div>
     </div>
-
     <div class="topbar__right topbar__right--safe">
       <a class="btn btn--ghost" href="../index.html">診断へ戻る</a>
     </div>
@@ -27,7 +26,7 @@
 
   <main class="wrap">
     <div class="card">
-      <div class="muted">カードをタップすると詳細へ移動します（例: type.html?t=OMHSX）。</div>
+      <div class="muted">カードをタップすると詳細へ移動します（例： type.html?t=OMHSX）。</div>
     </div>
 
     <div class="grid" id="grid"></div>
@@ -46,6 +45,7 @@
       a.className = "card";
       a.style.display = "block";
 
+      // 上段（グループ + ドット）
       const top = document.createElement("div");
       top.style.display = "flex";
       top.style.alignItems = "center";
@@ -66,12 +66,20 @@
       top.appendChild(tag);
       top.appendChild(dot);
 
+      // 1行目：コード
       const title = document.createElement("div");
       title.style.fontSize = "22px";
       title.style.fontWeight = "900";
       title.style.marginTop = "10px";
-      title.textContent = `${info?.code ?? t} - ${info?.name ?? ""}`;
+      title.textContent = info?.code ?? t;
 
+      // 2行目：日本語名（←あなたの jp 追加はここ）
+      const jp = document.createElement("div");
+      jp.className = "muted";
+      jp.style.marginTop = "6px";
+      jp.textContent = info?.name ?? "";
+
+      // 3行目：軸説明
       const sub = document.createElement("div");
       sub.className = "muted";
       sub.style.marginTop = "6px";
@@ -79,12 +87,13 @@
 
       a.appendChild(top);
       a.appendChild(title);
+      a.appendChild(jp);
       a.appendChild(sub);
 
       return a;
     }
 
-    // grid style
+    // grid style（念のため直書き）
     grid.style.display = "grid";
     grid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
     grid.style.gap = "12px";
