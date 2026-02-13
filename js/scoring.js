@@ -1,85 +1,66 @@
 // js/scoring.js
-// Likert 1..5 を「その設問の side を支持する強さ」に変換
-// 1: とても当てはまる  -> +2
-// 2: やや当てはまる    -> +1
-// 3: どちらとも言えない->  0
-// 4: あまり当てはまらない-> -1
-// 5: 全く当てはまらない  -> -2
-function likertToDelta(v) {
-  if (v === 1) return 2;
-  if (v === 2) return 1;
-  if (v === 3) return 0;
-  if (v === 4) return -1;
-  if (v === 5) return -2;
-  return 0;
-}
+// value 1..5 => +2..-2
+const W = { 1: 2, 2: 1, 3: 0, 4: -1, 5: -2 };
 
-// 軸ごとの左右ラベル
-const AXES = {
-  UO: { left: "U", right: "O" },
-  MC: { left: "M", right: "C" },
-  HL: { left: "H", right: "L" },
-  DS: { left: "D", right: "S" },
-  RX: { left: "R", right: "X" },
-};
+const AXES = [
+  { key: "UO", left: "U", right: "O" },
+  { key: "MC", left: "M", right: "C" },
+  { key: "HL", left: "H", right: "L" },
+  { key: "DS", left: "D", right: "S" },
+  { key: "RX", left: "R", right: "X" },
+];
 
-// answers: [60]（1..5 or null）
-// questions: [{axis:"UO", side:"U", ...}, ...]
-export function calculateResult(answers, questions) {
-  // 初期化
-  const sums = {};
-  const counts = {};
-  for (const k of Object.keys(AXES)) {
-    sums[k] = 0;     // 左優勢:+ / 右優勢:-
-    counts[k] = 0;   // 有効回答数
-  }
+export function calculateResult(answers, QUESTIONS) {
+  const sums = Object.fromEntries(AXES.map(a => [a.key, 0]));
+  const counts = Object.fromEntries(AXES.map(a => [a.key, 0]));
 
-  // 集計
-  for (let i = 0; i < questions.length; i++) {
-    const q = questions[i];
+  for (let i = 0; i < QUESTIONS.length; i++) {
+    const q = QUESTIONS[i];
     const v = answers[i];
     if (v == null) continue;
 
     const axisKey = q.axis;
-    if (!AXES[axisKey]) continue;
+    const axisDef = AXES.find(a => a.key === axisKey);
+    if (!axisDef) continue;
 
-    const { left, right } = AXES[axisKey];
-
-    // 「この設問は side 側を言っている」ので
-    // side が left なら delta をそのまま足す
-    // side が right なら delta の符号を反転（右を支持 = 左が減る）
-    const delta = likertToDelta(Number(v));
-    const signed = (q.side === left) ? delta : -delta;
-
-    sums[axisKey] += signed;
+    const signed = W[v] ?? 0;
+    // q.side が left 側なら +signed、right 側なら -signed
+    sums[axisKey] += (q.side === axisDef.left ? signed : -signed);
     counts[axisKey] += 1;
   }
 
-  // 割合化して返す
   const out = {};
-  for (const axisKey of Object.keys(AXES)) {
-    const { left, right } = AXES[axisKey];
-    const n = counts[axisKey];
+  for (const a of AXES) {
+    const n = counts[a.key] || 0;
+    const max = Math.max(1, n * 2); // 0除算防止
+    const score = sums[a.key];
 
-    // 1軸あたりの最大振れ幅（各設問 max2点）
-    const maxAbs = Math.max(1, n * 2); // n=0の保険
+    const pLeft = clamp01((score + max) / (2 * max)) * 100;
+    const pRight = 100 - pLeft;
 
-    // sums は [-maxAbs, +maxAbs]
-    // 左% = (sums + maxAbs) / (2*maxAbs) * 100
-    let pL = Math.round(((sums[axisKey] + maxAbs) / (2 * maxAbs)) * 100);
-    pL = Math.min(100, Math.max(0, pL));
-    const pR = 100 - pL;
+    const main = pLeft >= 50 ? a.left : a.right;
+    const alt = main === a.left ? a.right : a.left;
 
-    const main = (pL >= 50) ? left : right;
+    const percentMain = main === a.left ? round1(pLeft) : round1(pRight);
+    const percentAlt = round1(100 - percentMain);
 
-    out[axisKey] = { pL, pR, main, n };
+    // 既存UI互換（pL/pR）も持たせる
+    out[a.key] = {
+      left: a.left, right: a.right,
+      main, alt,
+      score,
+      pL: round1(pLeft),  // left %
+      pR: round1(pRight), // right %
+      percentMain,
+      percentAlt,
+      answered: n,
+    };
   }
 
   return out;
 }
 
 export function buildCode(axis) {
-  // 固定順
   return (
     axis.UO.main +
     axis.MC.main +
@@ -88,3 +69,6 @@ export function buildCode(axis) {
     axis.RX.main
   );
 }
+
+function clamp01(x){ return Math.max(0, Math.min(1, x)); }
+function round1(x){ return Math.round(x * 10) / 10; }
