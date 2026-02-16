@@ -27,6 +27,9 @@
   <main class="wrap">
     <div class="card">
       <div class="muted">カードをタップすると詳細へ移動します（例： type.html?t=OMHSX）。</div>
+      <div class="muted" style="margin-top:8px;">
+        ● グループ色：<span style="font-weight:700;">U×M / U×C / O×M / O×C</span> の4色
+      </div>
     </div>
 
     <div class="grid" id="grid"></div>
@@ -37,11 +40,35 @@
 
     const grid = document.getElementById("grid");
 
+    // ✅ 4色固定（U/O × M/C）
+    function groupColorFromCode(code) {
+      const uo = code?.[0] ?? "";
+      const mc = code?.[1] ?? "";
+      const key = `${uo}${mc}`; // UM / UC / OM / OC
+
+      const map = {
+        UM: "hsl(200 85% 60%)", // U×M
+        UC: "hsl(160 85% 55%)", // U×C
+        OM: "hsl(40  90% 60%)", // O×M
+        OC: "hsl(290 85% 65%)", // O×C
+      };
+
+      return map[key] ?? "rgba(255,255,255,.35)";
+    }
+
+    // グループ表示名も固定で分かりやすく
+    function groupNameFromCode(code) {
+      const uo = code?.[0] === "U" ? "外側処理" : "内側処理";
+      const mc = code?.[1] === "M" ? "適応" : "非適応";
+      return `${uo}×${mc}`;
+    }
+
     function card(t) {
-      const info = getTypeInfo(t);
+      const info = getTypeInfo(t) || {};
+      const code = info.code ?? t;
 
       const a = document.createElement("a");
-      a.href = `./type.html?t=${encodeURIComponent(t)}`;
+      a.href = `./type.html?t=${encodeURIComponent(code)}`;
       a.className = "card";
       a.style.display = "block";
 
@@ -54,13 +81,13 @@
 
       const tag = document.createElement("div");
       tag.className = "badge";
-      tag.textContent = info?.group?.name ?? "GROUP";
+      tag.textContent = groupNameFromCode(code); // ✅ ここで「GROUP」じゃなく実名
 
       const dot = document.createElement("div");
       dot.style.width = "12px";
       dot.style.height = "12px";
       dot.style.borderRadius = "999px";
-      dot.style.background = info?.color ?? "rgba(255,255,255,.35)";
+      dot.style.background = groupColorFromCode(code); // ✅ 4色固定
       dot.style.border = "1px solid rgba(255,255,255,.18)";
 
       top.appendChild(tag);
@@ -71,15 +98,15 @@
       title.style.fontSize = "22px";
       title.style.fontWeight = "900";
       title.style.marginTop = "10px";
-      title.textContent = info?.code ?? t;
+      title.textContent = code;
 
-      // 2行目：日本語名（←あなたの jp 追加はここ）
+      // 2行目：日本語名（キャラ名）
       const jp = document.createElement("div");
       jp.className = "muted";
       jp.style.marginTop = "6px";
-      jp.textContent = info?.name ?? "";
+      jp.textContent = info?.label ?? info?.name ?? ""; // characters.js は label を返す
 
-      // 3行目：軸説明
+      // 3行目：軸の説明
       const sub = document.createElement("div");
       sub.className = "muted";
       sub.style.marginTop = "6px";
@@ -87,13 +114,13 @@
 
       a.appendChild(top);
       a.appendChild(title);
-      a.appendChild(jp);
-      a.appendChild(sub);
+      if (jp.textContent) a.appendChild(jp);
+      if (sub.textContent) a.appendChild(sub);
 
       return a;
     }
 
-    // grid style（念のため直書き）
+    // grid style（このページだけで完結させる）
     grid.style.display = "grid";
     grid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
     grid.style.gap = "12px";
