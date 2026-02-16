@@ -1,4 +1,3 @@
-<!-- pages/characters.html -->
 <!doctype html>
 <html lang="ja">
 <head>
@@ -26,107 +25,106 @@
 
   <main class="wrap">
     <div class="card">
-      <div class="muted">カードをタップすると詳細へ移動します（例： type.html?t=OMHSX）。</div>
-      <div class="muted" style="margin-top:8px;">
-        ● グループ色：<span style="font-weight:700;">U×M / U×C / O×M / O×C</span> の4色
+      <div class="muted">
+        カードをタップすると詳細へ移動します（例：type.html?t=OMHSX）
       </div>
     </div>
 
     <div class="grid" id="grid"></div>
   </main>
 
-  <script type="module">
-    import { allTypes, getTypeInfo } from "../js/characters.js";
+<script type="module">
+import { allTypes, getTypeInfo } from "../js/characters.js";
 
-    const grid = document.getElementById("grid");
+const grid = document.getElementById("grid");
 
-    // ✅ 4色固定（U/O × M/C）
-    function groupColorFromCode(code) {
-      const uo = code?.[0] ?? "";
-      const mc = code?.[1] ?? "";
-      const key = `${uo}${mc}`; // UM / UC / OM / OC
+/* ===============================
+   🔥 グループ別 絵文字＋カラー
+   =============================== */
+function groupMeta(code) {
+  const first = code[0]; // U / O
+  const second = code[1]; // M / C
 
-      const map = {
-        UM: "hsl(200 85% 60%)", // U×M
-        UC: "hsl(160 85% 55%)", // U×C
-        OM: "hsl(40  90% 60%)", // O×M
-        OC: "hsl(290 85% 65%)", // O×C
-      };
+  if (first === "U" && second === "M")
+    return { icon: "🟩", color: "#22c55e" };
 
-      return map[key] ?? "rgba(255,255,255,.35)";
-    }
+  if (first === "U" && second === "C")
+    return { icon: "🟦", color: "#3b82f6" };
 
-    // グループ表示名も固定で分かりやすく
-    function groupNameFromCode(code) {
-      const uo = code?.[0] === "U" ? "外側処理" : "内側処理";
-      const mc = code?.[1] === "M" ? "適応" : "非適応";
-      return `${uo}×${mc}`;
-    }
+  if (first === "O" && second === "M")
+    return { icon: "🟪", color: "#a855f7" };
 
-    function card(t) {
-      const info = getTypeInfo(t) || {};
-      const code = info.code ?? t;
+  if (first === "O" && second === "C")
+    return { icon: "🟥", color: "#ef4444" };
 
-      const a = document.createElement("a");
-      a.href = `./type.html?t=${encodeURIComponent(code)}`;
-      a.className = "card";
-      a.style.display = "block";
+  return { icon: "⬜", color: "#888" };
+}
 
-      // 上段（グループ + ドット）
-      const top = document.createElement("div");
-      top.style.display = "flex";
-      top.style.alignItems = "center";
-      top.style.justifyContent = "space-between";
-      top.style.gap = "10px";
+function card(typeCode) {
+  const info = getTypeInfo(typeCode);
+  const meta = groupMeta(typeCode);
 
-      const tag = document.createElement("div");
-      tag.className = "badge";
-      tag.textContent = groupNameFromCode(code); // ✅ ここで「GROUP」じゃなく実名
+  const a = document.createElement("a");
+  a.href = `./type.html?t=${encodeURIComponent(typeCode)}`;
+  a.className = "card";
+  a.style.display = "block";
 
-      const dot = document.createElement("div");
-      dot.style.width = "12px";
-      dot.style.height = "12px";
-      dot.style.borderRadius = "999px";
-      dot.style.background = groupColorFromCode(code); // ✅ 4色固定
-      dot.style.border = "1px solid rgba(255,255,255,.18)";
+  /* 上段 */
+  const top = document.createElement("div");
+  top.style.display = "flex";
+  top.style.alignItems = "center";
+  top.style.justifyContent = "space-between";
+  top.style.gap = "10px";
 
-      top.appendChild(tag);
-      top.appendChild(dot);
+  const tag = document.createElement("div");
+  tag.className = "badge";
+  tag.textContent = info?.group?.name ?? "GROUP";
 
-      // 1行目：コード
-      const title = document.createElement("div");
-      title.style.fontSize = "22px";
-      title.style.fontWeight = "900";
-      title.style.marginTop = "10px";
-      title.textContent = code;
+  const dot = document.createElement("div");
+  dot.style.width = "12px";
+  dot.style.height = "12px";
+  dot.style.borderRadius = "999px";
+  dot.style.background = meta.color;
 
-      // 2行目：日本語名（キャラ名）
-      const jp = document.createElement("div");
-      jp.className = "muted";
-      jp.style.marginTop = "6px";
-      jp.textContent = info?.label ?? info?.name ?? ""; // characters.js は label を返す
+  top.appendChild(tag);
+  top.appendChild(dot);
 
-      // 3行目：軸の説明
-      const sub = document.createElement("div");
-      sub.className = "muted";
-      sub.style.marginTop = "6px";
-      sub.textContent = info?.axesText ?? "";
+  /* 1行目：色＋コード */
+  const title = document.createElement("div");
+  title.style.fontSize = "22px";
+  title.style.fontWeight = "900";
+  title.style.marginTop = "10px";
+  title.textContent = `${meta.icon} ${typeCode}`;
 
-      a.appendChild(top);
-      a.appendChild(title);
-      if (jp.textContent) a.appendChild(jp);
-      if (sub.textContent) a.appendChild(sub);
+  /* 2行目：日本語名 */
+  const jp = document.createElement("div");
+  jp.className = "muted";
+  jp.style.marginTop = "6px";
+  jp.textContent = info?.label ?? "";
 
-      return a;
-    }
+  /* 3行目：軸説明 */
+  const sub = document.createElement("div");
+  sub.className = "muted";
+  sub.style.marginTop = "6px";
+  sub.textContent = info?.axesText ?? "";
 
-    // grid style（このページだけで完結させる）
-    grid.style.display = "grid";
-    grid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
-    grid.style.gap = "12px";
-    grid.style.marginTop = "12px";
+  a.appendChild(top);
+  a.appendChild(title);
+  a.appendChild(jp);
+  a.appendChild(sub);
 
-    for (const t of allTypes) grid.appendChild(card(t));
-  </script>
+  return a;
+}
+
+/* グリッド */
+grid.style.display = "grid";
+grid.style.gridTemplateColumns = "repeat(2, minmax(0, 1fr))";
+grid.style.gap = "12px";
+grid.style.marginTop = "12px";
+
+for (const t of allTypes) {
+  grid.appendChild(card(t));
+}
+</script>
 </body>
 </html>
